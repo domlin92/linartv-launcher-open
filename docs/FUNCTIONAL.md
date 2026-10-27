@@ -11,7 +11,7 @@ LinarTV to ekran główny (launcher) dla Android TV z myślą o kibicach polskie
 ### 1. Funkcje
 
 #### Pulpit
-- **Zegar i data** w wybranym języku (polski lub angielski).
+- **Zegar i data** w wybranym języku (polski, angielski, niemiecki, hiszpański lub włoski w wersji deweloperskiej).
 - **Pogoda** dla wybranego miasta na świecie: bieżąca temperatura i prognoza godzinowa. Kliknięcie kafelka otwiera szczegóły: 7 dni, warunki teraz (wiatr, wilgotność, ciśnienie, opad), Słońce i fazę Księżyca. Dane odświeżają się co 30 minut. Wschód i zachód Słońca pochodzą z Open-Meteo, faza Księżyca jest liczona w aplikacji.
 - **Terminarz jednego lub dwóch klubów** z Ekstraklasy, I ligi, II ligi, dowolnej grupy III ligi lub IV ligi (16 grup wojewódzkich). Karta pokazuje rozgrywki i kolejkę, rywala, herby, datę i godzinę (gdy jest potwierdzona) oraz czerwony **LIVE** w trakcie meczu. Kliknięcie karty przełącza między najbliższym a następnym meczem. Terminarze odświeżają się raz dziennie.
 - **Układ:** przy dwóch klubach pogoda i dwie karty meczów stoją w jednym rzędzie. Przy jednym klubie pogoda i karta meczu są ułożone jedna nad drugą po prawej stronie.
@@ -164,7 +164,7 @@ LinarTV is a home screen (launcher) for Android TV built for Polish football fan
 ### 1. Features
 
 **Home screen**
-- **Clock and date** in the selected language (Polish or English).
+- **Clock and date** in the selected language (Polish, English, German, Spanish or Italian in the development version).
 - **Weather** for a chosen city anywhere in the world: current temperature and hourly forecast. Clicking the tile opens details: 7 days, current conditions (wind, humidity, pressure, precipitation), sun and moon phase. Refreshed every 30 minutes. Sunrise and sunset come from Open-Meteo; the moon phase is computed by the app.
 - **Fixtures of one or two clubs** from Ekstraklasa, I liga, II liga, any III liga group or IV liga (16 regional groups). The card shows competition and round, opponent, crests, date and kick-off time (when confirmed) and a red **LIVE** during the match. Clicking the card switches between the next and the following match. Fixtures refresh once a day.
 - **Layout:** with two clubs, weather and both match cards share one row; with one club, weather and the match card are stacked on the right.

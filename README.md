@@ -26,11 +26,13 @@
 
 **LinarTV** is a clean, fast home screen for Android TV built around Polish football. It shows the clock, the weather for your city and the next matches of one or two clubs you follow — and keeps your favourite apps one click away.
 
+LinarTV replaces your home screen. It does not uninstall the TV manufacturer's apps or remove their advertising and tracking services. If you also want to tidy up the TV's system apps, [CleanYourTV](https://github.com/Gathin23/cleanyourtv) is a separate project you can use alongside LinarTV.
+
 ### Features
 - **Your clubs' fixtures** — pick one or two teams from Ekstraklasa, I liga, II liga, any of the four III liga groups or any of the 16 IV liga groups on [kalendarzeligowe.pl](https://kalendarzeligowe.pl); fixtures update daily, with club crests.
 - **Weather for any city in the world** — current conditions, hourly and 7-day forecast from Open-Meteo, with Meteocons weather icons.
 - **Day and night modes**, app dock and full app drawer, quick access to TV inputs.
-- **Polish or English interface** and Celsius or Fahrenheit temperature, selectable in LinarTV settings.
+- **Polish, English, German, Spanish or Italian interface** and Celsius or Fahrenheit temperature, selectable in LinarTV settings (new languages in the development version).
 - **Wallpapers from your phone** — scan a QR code and upload photos over your home Wi-Fi (6-digit code, attempt limit).
 - **Screensaver** with your photos after 5 minutes of inactivity.
 
@@ -77,11 +79,13 @@ Code: [MIT](LICENSE). Club crests and third-party logos are not covered by the c
 
 **LinarTV** to czytelny, szybki ekran główny dla Android TV z myślą o polskiej piłce. Pokazuje zegar, pogodę dla Twojego miasta i najbliższe mecze jednego lub dwóch klubów — a ulubione aplikacje są zawsze pod ręką.
 
+LinarTV zastępuje ekran główny. Nie odinstalowuje aplikacji producenta telewizora ani nie usuwa jego usług reklamowych i śledzących. Jeśli chcesz również uporządkować aplikacje systemowe TV, [CleanYourTV](https://github.com/Gathin23/cleanyourtv) to osobny projekt, z którego możesz korzystać obok LinarTV.
+
 ### Funkcje
 - **Terminarz Twoich klubów** — wybierz jedną lub dwie drużyny z Ekstraklasy, I ligi, II ligi, dowolnej z czterech grup III ligi lub dowolnej z 16 grup IV ligi na [kalendarzeligowe.pl](https://kalendarzeligowe.pl); terminarze odświeżają się codziennie, z herbami klubów.
 - **Pogoda dla dowolnego miasta na świecie** — aktualne warunki, prognoza godzinowa i 7-dniowa z Open-Meteo oraz ikony Meteocons. Miasto zmienisz w *Ustawieniach*.
 - **Tryb dzienny i nocny**, pasek aplikacji i pełna lista aplikacji, szybki dostęp do źródeł TV.
-- **Język polski lub angielski** oraz temperatura w stopniach Celsjusza lub Fahrenheita, wybierane w ustawieniach LinarTV.
+- **Język polski, angielski, niemiecki, hiszpański lub włoski** oraz temperatura w stopniach Celsjusza lub Fahrenheita, wybierane w ustawieniach LinarTV (nowe języki w wersji deweloperskiej).
 - **Tapety z telefonu** — zeskanuj kod QR i wyślij zdjęcia przez domowe Wi-Fi (6-cyfrowy kod z limitem prób).
 - **Wygaszacz** z Twoimi zdjęciami po 5 minutach bezczynności.
 

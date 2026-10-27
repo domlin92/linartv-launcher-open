@@ -2,6 +2,9 @@
 
 ## Polski
 
+### Materiały do README — na później
+- [ ] Dodać więcej aktualnych zrzutów ekranu: tryb jasny/ciemny, panel ustawień, wybór klubów, szczegóły pogody, galeria tapet i pasek Spotify. Używać neutralnych tapet i danych demonstracyjnych.
+
 Aktualny zakres Open: wyłącznie kalendarzeligowe.pl — Ekstraklasa, I liga, II liga, cztery grupy III ligi i 16 grup IV ligi. Pogoda z Open-Meteo dla dowolnego miasta, współrzędne miast z geokodowania Open-Meteo. Obsługa fixtur.es została usunięta z kodu do czasu otrzymania zgody operatora; notatki o niej poniżej dotyczą przyszłych funkcji.
 
 ### 1.0.0 — pierwsze wydanie
@@ -43,6 +46,9 @@ Pomysł: **Polska → kalendarzeligowe.pl; świat → kalendarze ICS fixtur.es**
 - Podział `DashboardActivity` na mniejsze klasy.
 
 ## English
+
+### README media — later
+- [ ] Add more current screenshots: light/dark appearance, settings panel, club selection, weather details, wallpaper gallery and Spotify bar. Use neutral wallpapers and demo data.
 
 Current Open scope: kalendarzeligowe.pl only — Ekstraklasa, I liga, II liga, the four III liga groups and the 16 IV liga groups. Weather from Open-Meteo for any city, city coordinates from Open-Meteo geocoding. fixtur.es support was removed from the code until the operator agrees; the notes about it below describe future features.
 

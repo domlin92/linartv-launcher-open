@@ -86,7 +86,6 @@ public final class DashboardActivity extends Activity {
     private static final int SINGLE_WEATHER_Y = 145;
     private static final int SINGLE_MATCH_Y = 457;
     private static final Locale PL = new Locale("pl", "PL");
-    private static final Locale EN = Locale.ENGLISH;
     private static final int TILE_BG = 0x80152146;
     private static final int TILE_FOCUS_BG = 0xB0335D91;
     private static final int FOCUS_RING = 0xFF9FD5FF;
@@ -210,15 +209,22 @@ public final class DashboardActivity extends Activity {
     private ImageView popupBlurImage;
     private Bitmap popupBlurBitmap;
     private boolean english;
+    private Translations translations;
     private boolean fahrenheit;
-    private Locale displayLocale() { return english ? EN : PL; }
-    private String tr(String polish, String englishText) { return english ? englishText : polish; }
+    private Locale displayLocale() { return translations.locale(); }
+    private String displayDatePattern() {
+        switch (translations.code()) {
+            case "de": return "EEEE, d. MMMM";
+            case "es": return "EEEE, d 'de' MMMM";
+            case "it": return "EEEE d MMMM";
+            default: return "EEEE, d MMMM";
+        }
+    }
+    private String tr(String polish, String englishText) { return translations.tr(polish, englishText); }
 
-    /** "pl" / "en" as chosen, or "auto": Polish only when the system language is Polish. */
+    /** Compatibility helper; any non-Polish interface translates competition metadata. */
     static boolean englishFor(String language) {
-        if ("pl".equals(language)) return false;
-        if ("en".equals(language)) return true;
-        return !"pl".equals(Locale.getDefault().getLanguage());
+        return !"pl".equals(LanguageChoice.resolve(language, Locale.getDefault()));
     }
     private boolean screensaverActive;
     private boolean suppressSaverKeyUp;
@@ -247,7 +253,7 @@ public final class DashboardActivity extends Activity {
         @Override public void run() {
             Date now = new Date();
             clock.setText(new SimpleDateFormat("HH:mm", PL).format(now));
-            String formatted = new SimpleDateFormat("EEEE, d MMMM", displayLocale()).format(now);
+            String formatted = new SimpleDateFormat(displayDatePattern(), displayLocale()).format(now);
             date.setText(Character.toUpperCase(formatted.charAt(0)) + formatted.substring(1));
             if (!popupOpen && night != isNight()) { buildScreen(); return; }
             if (!popupOpen && (matchCardNeedsUpdate(clubOneCalendar, now.getTime())
@@ -287,8 +293,9 @@ public final class DashboardActivity extends Activity {
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         scale = Math.min(metrics.widthPixels / (float) W, metrics.heightPixels / (float) H);
         SharedPreferences saved = getPreferences(MODE_PRIVATE);
-        // New installs follow the TV's language: Polish system -> Polish, any other -> English.
-        english = englishFor(saved.getString("language", "auto"));
+        // New installs follow supported TV languages; other languages fall back to English.
+        translations = new Translations(this, saved.getString("language", "auto"));
+        english = !"pl".equals(translations.code());
         fahrenheit = "f".equals(saved.getString("temperature_unit", "c"));
         clubOneCalendar = configuredCalendar(saved, 1);
         clubTwoCalendar = configuredCalendar(saved, 2);
@@ -419,7 +426,7 @@ public final class DashboardActivity extends Activity {
         double value = current.optDouble(field, Double.NaN);
         if (Double.isNaN(value)) return "—";
         String text = Math.abs(value - Math.rint(value)) < 0.05 ? String.valueOf(Math.round(value))
-                : String.format(PL, "%.1f", value);
+                : String.format(displayLocale(), "%.1f", value);
         return text + unit;
     }
 
@@ -1121,10 +1128,11 @@ public final class DashboardActivity extends Activity {
     }
 
     private void showLanguageSetup() {
-        String[] choices = {tr("Systemowy", "System"), "Polski", "English"};
+        String[] choices = {tr("Systemowy", "System"), "Polski", "English", "Deutsch", "Español", "Italiano"};
         showChoiceDialog(tr("Język", "Language"), choices, which -> {
-            String language = which == 0 ? "auto" : which == 1 ? "pl" : "en";
-            english = englishFor(language);
+            String language = LanguageChoice.CODES[which];
+            translations = new Translations(this, language);
+            english = !"pl".equals(translations.code());
             getPreferences(MODE_PRIVATE).edit().putString("language", language).apply();
             // Update the still-open overview in place. Dialog dismiss listeners
             // can run after this callback; do not depend on their ordering.
@@ -1199,7 +1207,7 @@ public final class DashboardActivity extends Activity {
         results.removeAllViews();
         new Thread(() -> {
             List<PublicForecastClient.Place> places;
-            try { places = PublicForecastClient.searchPlaces(name, english ? "en" : "pl"); }
+            try { places = PublicForecastClient.searchPlaces(name, translations.code()); }
             catch (Exception e) {
                 android.util.Log.w("LinarTV", "City search failed", e);
                 places = null;
@@ -1455,11 +1463,13 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     /** Country first: Poland, then foreign countries alphabetically (Top 5 leagues). */
     private void chooseLeague(int slot, CalendarFeed[] draft, TextView button,
                               Dialog setup, TextView status) {
-        List<FixturesClient.Country> foreign = FixturesClient.sortedCountries(english);
+        List<FixturesClient.Country> foreign = new ArrayList<>(FixturesClient.COUNTRIES);
+        java.text.Collator collator = java.text.Collator.getInstance(displayLocale());
+        foreign.sort((a, b) -> collator.compare(tr(a.namePl, a.nameEn), tr(b.namePl, b.nameEn)));
         String[] countries = new String[foreign.size() + 1];
         countries[0] = tr("Polska", "Poland");
         for (int i = 0; i < foreign.size(); i++)
-            countries[i + 1] = english ? foreign.get(i).nameEn : foreign.get(i).namePl;
+            countries[i + 1] = tr(foreign.get(i).namePl, foreign.get(i).nameEn);
         showChoiceDialog(tr("Wybierz kraj", "Choose a country"), countries, index -> {
             if (index == 0) { choosePolishLeague(slot, draft, button, setup, status); return; }
             FixturesClient.Country country = foreign.get(index - 1);
@@ -2016,13 +2026,13 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     private String competitionName(String name) {
         if (!english) return name;
         switch (name) {
-            case "Liga Mistrzów": return "Champions League";
-            case "Liga Europy": return "Europa League";
-            case "Liga Konferencji": return "Conference League";
-            case "Puchar Polski": return "Polish Cup";
-            case "Superpuchar": return "Super Cup";
-            case "Superpuchar UEFA": return "UEFA Super Cup";
-            case "Reprezentacja — Liga Narodów": return "Poland — Nations League";
+            case "Liga Mistrzów": return tr("", "Champions League");
+            case "Liga Europy": return tr("", "Europa League");
+            case "Liga Konferencji": return tr("", "Conference League");
+            case "Puchar Polski": return tr("", "Polish Cup");
+            case "Superpuchar": return tr("", "Super Cup");
+            case "Superpuchar UEFA": return tr("", "UEFA Super Cup");
+            case "Reprezentacja — Liga Narodów": return tr("", "Poland — Nations League");
             default: return name;
         }
     }
@@ -2030,16 +2040,16 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     private String stageName(String stage) {
         if (!english) return stage;
         String s = stage.toLowerCase(PL).trim();
-        if (s.equals("faza ligowa")) return "League phase";
-        if (s.startsWith("1/64")) return "Round of 128";
-        if (s.startsWith("1/32")) return "Round of 64";
-        if (s.startsWith("1/16")) return "Round of 32";
-        if (s.startsWith("1/8")) return "Round of 16";
-        if (s.startsWith("ćwierćfina")) return "Quarter-final";
-        if (s.startsWith("półfina")) return "Semi-final";
-        if (s.startsWith("finał") || s.equals("final")) return "Final";
-        if (s.startsWith("baraż") || s.startsWith("play-off")) return "Play-off";
-        if (s.startsWith("runda wstępna")) return "Preliminary round";
+        if (s.equals("faza ligowa")) return tr("faza ligowa", "League phase");
+        if (s.startsWith("1/64")) return tr("", "Round of 128");
+        if (s.startsWith("1/32")) return tr("", "Round of 64");
+        if (s.startsWith("1/16")) return tr("", "Round of 32");
+        if (s.startsWith("1/8")) return tr("", "Round of 16");
+        if (s.startsWith("ćwierćfina")) return tr("", "Quarter-final");
+        if (s.startsWith("półfina")) return tr("", "Semi-final");
+        if (s.startsWith("finał") || s.equals("final")) return tr("", "Final");
+        if (s.startsWith("baraż") || s.startsWith("play-off")) return tr("", "Play-off");
+        if (s.startsWith("runda wstępna")) return tr("", "Preliminary round");
         // "II runda eliminacyjna" -> "Qualifying round 2", "I runda" -> "Round 1".
         java.util.regex.Matcher r = java.util.regex.Pattern
                 .compile("^(iv|iii|ii|i|v|\\d+)\\.? runda( eliminacyjna)?$").matcher(s);
@@ -2047,18 +2057,25 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             String n = r.group(1);
             int number = n.matches("\\d+") ? Integer.parseInt(n)
                     : java.util.Arrays.asList("i", "ii", "iii", "iv", "v").indexOf(n) + 1;
-            return (r.group(2) != null ? "Qualifying round " : "Round ") + number;
+            return (r.group(2) != null ? tr("", "Qualifying round ") : tr("", "Round ")) + number;
         }
         return stage;
     }
 
     /** "Sobota, 7 listopada\nza 12 dni" (English: "Saturday, 7 November\nin 12 days"). */
+    private String relativeMatchDays(long days) {
+        if ("de".equals(translations.code())) return "in " + days + " Tagen";
+        if ("es".equals(translations.code())) return "dentro de " + days + " días";
+        if ("it".equals(translations.code())) return "tra " + days + " giorni";
+        return tr("za ", "in ") + days + tr(" dni", " days");
+    }
+
     private String matchDateLabel(IcsMatchParser.Match match) {
-        String day = new SimpleDateFormat("EEEE, d MMMM", displayLocale()).format(new Date(match.startsAt));
+        String day = new SimpleDateFormat(displayDatePattern(), displayLocale()).format(new Date(match.startsAt));
         day = Character.toUpperCase(day.charAt(0)) + day.substring(1);
         int days = daysUntil(match);
         return day + "\n" + (days == 1 ? tr("jutro", "tomorrow")
-                : tr("za ", "in ") + days + tr(" dni", " days"));
+                : relativeMatchDays(days));
     }
 
     /** Calendar days from today to the match (0 = today). */
@@ -2922,7 +2939,10 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         }
         String[] labels = new String[options.size()];
         for (int i = 0; i < labels.length; i++) labels[i] = appLabel(options.get(i));
-        showChoiceDialog(tr("Zamień „", "Replace “") + current + "”", labels, choice -> {
+        String opening = tr("Zamień „", "Replace “");
+        // Close with the quote mark that matches the language's opening one („…“, «…», “…”).
+        String closing = opening.endsWith("«") ? "»" : opening.endsWith("„") && translations.code().equals("de") ? "“" : "”";
+        showChoiceDialog(opening + current + closing, labels, choice -> {
             List<String> next = new ArrayList<>(dockPackages);
             next.set(index, options.get(choice));
             saveDock(next);
@@ -3744,8 +3764,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                 .setDuration(SCREENSAVER_SLIDE_MS).start();
         Date now = new Date();
         screensaverClock.setText(new SimpleDateFormat("HH:mm", PL).format(now));
-        String formatted = new SimpleDateFormat("EEEE, d MMMM", displayLocale()).format(now);
-        screensaverDate.setText(formatted.toUpperCase(PL));
+        String formatted = new SimpleDateFormat(displayDatePattern(), displayLocale()).format(now);
+        screensaverDate.setText(formatted.toUpperCase(displayLocale()));
         FrameLayout.LayoutParams info = new FrameLayout.LayoutParams(-2, -2);
         int corner = screensaverIndex % 4;
         info.gravity = (corner % 2 == 0 ? Gravity.LEFT : Gravity.RIGHT)
@@ -3818,7 +3838,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         final boolean[] receivedPhoto = {false};
         PhotoUploadServer server;
         try {
-            server = new PhotoUploadServer(wallpaperFolder(), english, filename -> handler.post(() -> {
+            server = new PhotoUploadServer(wallpaperFolder(), translations, filename -> handler.post(() -> {
                 receivedPhoto[0] = true;
                 status.setText(tr("Zdjęcie dodane. Po zamknięciu zobaczysz je w galerii.",
                         "Photo added. It will appear in the gallery when you close this window."));

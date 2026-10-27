@@ -30,3 +30,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Crest checks failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Compilation of crest matcher checks failed.' }
 & $runtime -cp $outputPath com.linart.tvpreview.CrestNameMatcherCheck
 if ($LASTEXITCODE -ne 0) { throw 'Crest matcher checks failed.' }
+& $compiler -encoding UTF-8 -d $outputPath (Join-Path $projectRoot 'app\src\main\java\com\linart\tvpreview\LanguageChoice.java') (Join-Path $projectRoot 'tests\LanguageChoiceCheck.java')
+if ($LASTEXITCODE -ne 0) { throw 'Compilation of language checks failed.' }
+& $runtime -cp $outputPath com.linart.tvpreview.LanguageChoiceCheck
+if ($LASTEXITCODE -ne 0) { throw 'Language checks failed.' }
+python (Join-Path $projectRoot 'scripts\check-translations.py')
+if ($LASTEXITCODE -ne 0) { throw 'Translation coverage checks failed.' }

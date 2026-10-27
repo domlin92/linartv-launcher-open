@@ -5,6 +5,9 @@ Every release gets an entry here in Polish and English. Newest first.
 
 ## Niewydane / Unreleased
 
+- Interfejs niemiecki, hiszpański i włoski (DE/ES/IT): ustawienia, kreator klubów, pogoda, etapy rozgrywek oraz strona przesyłania zdjęć. Automatyczny wybór rozpoznaje pięć języków, daty i liczby są lokalizowane, a zmiana języka działa natychmiast.
+- German, Spanish and Italian interfaces (DE/ES/IT): settings, club setup, weather, competition stages and the phone upload page. Automatic selection recognises five languages; dates and numbers are localised and language changes apply immediately.
+
 - Język aplikacji domyślnie jak w systemie TV: polski system → polski, każdy inny → angielski. W Ustawieniach → Język nowa opcja „Systemowy”; wcześniejszy ręczny wybór zostaje.
 - The app language follows the TV system by default: Polish system → Polish, any other → English. Settings → Language has a new "System" option; an earlier manual choice is kept.
 - Karty meczu i pogody mają na dole wąski pasek: z lewej „Dane dostarcza: **dostawca**”, z prawej czas odświeżenia. Karty są nieco wyższe.

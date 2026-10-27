@@ -30,16 +30,16 @@ final class PhotoUploadServer implements AutoCloseable {
     private static final int MAX_FAILED_PINS = 5;
     private int failedPins;
     private final File folder;
-    private final boolean english;
+    private final Translations translations;
     private final Consumer<String> onUploaded;
     private final String pin = String.format(Locale.ROOT, "%06d", new SecureRandom().nextInt(1_000_000));
     private final ServerSocket server;
     private final Thread worker;
     private volatile boolean running = true;
 
-    PhotoUploadServer(File folder, boolean english, Consumer<String> onUploaded) throws IOException {
+    PhotoUploadServer(File folder, Translations translations, Consumer<String> onUploaded) throws IOException {
         this.folder = folder;
-        this.english = english;
+        this.translations = translations;
         this.onUploaded = onUploaded;
         server = new ServerSocket(PORT);
         worker = new Thread(this::serve, "wallpaper-upload");
@@ -48,7 +48,7 @@ final class PhotoUploadServer implements AutoCloseable {
     }
 
     String pin() { return pin; }
-    private String tr(String polish, String englishText) { return english ? englishText : polish; }
+    private String tr(String polish, String englishText) { return translations.tr(polish, englishText); }
 
     static String localIpv4() {
         String fallback = null;
@@ -247,22 +247,30 @@ final class PhotoUploadServer implements AutoCloseable {
                 + "s.textContent='Przesyłanie…';for(let i=0;i<f.length;i++){let x=f[i];if(x.size>25000000){s.textContent+='\\nZa duży plik: '+x.name;continue}"
                 + "try{let r=await fetch('/upload',{method:'POST',headers:{'X-Pin':p,'X-Filename':encodeURIComponent(x.name),'Content-Type':x.type||'application/octet-stream'},body:x});"
                 + "let t=await r.text();s.textContent+='\\n'+t}catch(e){s.textContent+='\\nNie udało się wysłać '+x.name+'. Sprawdź, czy okno z kodem jest nadal otwarte na TV, i spróbuj ponownie.'}}}</script></html>";
-        if (!english) return html;
-        return html.replace("lang=pl", "lang=en")
-                .replace("LinarTV · zdjęcia", "LinarTV · photos")
-                .replace("Zdjęcia na TV", "Photos on TV")
-                .replace("Telefon i telewizor muszą być w tej samej sieci. Wybierz zdjęcia JPG, PNG lub WebP, do 25 MB każde.",
-                        "Phone and TV must be on the same network. Choose JPG, PNG or WebP photos, up to 25 MB each.")
-                .replace("Kod widoczny na TV", "Code shown on TV")
-                .replace("6 cyfr", "6 digits")
-                .replace("Zdjęcia", "Photos")
-                .replace("Dodaj zdjęcia", "Add photos")
-                .replace("Wpisz kod i wybierz zdjęcia.", "Enter the code and choose photos.")
-                .replace("Przesyłanie…", "Uploading…")
-                .replace("Za duży plik: ", "File too large: ")
-                .replace("Nie udało się wysłać ", "Could not upload ")
-                .replace(". Sprawdź, czy okno z kodem jest nadal otwarte na TV, i spróbuj ponownie.",
-                        ". Check that the code window is still open on TV and try again.");
+        if ("pl".equals(translations.code())) return html;
+        return html.replace("lang=pl", "lang=" + translations.code())
+                .replace("LinarTV · zdjęcia", htmlText(tr("LinarTV · zdjęcia", "LinarTV · photos")))
+                .replace("Zdjęcia na TV", htmlText(tr("Zdjęcia na TV", "Photos on TV")))
+                .replace("Telefon i telewizor muszą być w tej samej sieci. Wybierz zdjęcia JPG, PNG lub WebP, do 25 MB każde.", htmlText(tr("Telefon i telewizor muszą być w tej samej sieci. Wybierz zdjęcia JPG, PNG lub WebP, do 25 MB każde.", "Phone and TV must be on the same network. Choose JPG, PNG or WebP photos, up to 25 MB each.")))
+                .replace("Kod widoczny na TV", htmlText(tr("Kod widoczny na TV", "Code shown on TV")))
+                .replace("6 cyfr", htmlText(tr("6 cyfr", "6 digits")))
+                .replace("Zdjęcia", htmlText(tr("Zdjęcia", "Photos")))
+                .replace("Dodaj zdjęcia", htmlText(tr("Dodaj zdjęcia", "Add photos")))
+                .replace("Wpisz kod i wybierz zdjęcia.", jsText(tr("Wpisz kod i wybierz zdjęcia.", "Enter the code and choose photos.")))
+                .replace("Przesyłanie…", jsText(tr("Przesyłanie…", "Uploading…")))
+                .replace("Za duży plik: ", jsText(tr("Za duży plik: ", "File too large: ")))
+                .replace("Nie udało się wysłać ", jsText(tr("Nie udało się wysłać ", "Could not upload ")))
+                .replace(". Sprawdź, czy okno z kodem jest nadal otwarte na TV, i spróbuj ponownie.", jsText(tr(". Sprawdź, czy okno z kodem jest nadal otwarte na TV, i spróbuj ponownie.", ". Check that the code window is still open on TV and try again.")));
+    }
+
+
+    private static String htmlText(String value) {
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&#39;");
+    }
+    private static String jsText(String value) {
+        return value.replace("\\", "\\\\").replace("'", "\\'")
+                .replace("<", "\\u003c").replace("\n", "\\n").replace("\r", "\\r");
     }
 
     @Override public void close() {
