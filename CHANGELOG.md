@@ -5,8 +5,12 @@ Every release gets an entry here in Polish and English. Newest first.
 
 ## Niewydane / Unreleased
 
-- Na karcie meczu podpis źródła danych w lewym dolnym rogu: „Dane dostarcza: kalendarzeligowe.pl / fixtur.es”. Karty są nieco wyższe.
-- The match card shows its data provider in the bottom-left corner: "Data provided by: kalendarzeligowe.pl / fixtur.es". Cards are slightly taller.
+- Język aplikacji domyślnie jak w systemie TV: polski system → polski, każdy inny → angielski. W Ustawieniach → Język nowa opcja „Systemowy”; wcześniejszy ręczny wybór zostaje.
+- The app language follows the TV system by default: Polish system → Polish, any other → English. Settings → Language has a new "System" option; an earlier manual choice is kept.
+- Karty meczu i pogody mają na dole wąski pasek: z lewej „Dane dostarcza: **dostawca**”, z prawej czas odświeżenia. Karty są nieco wyższe.
+- Match and weather cards have a thin bottom strip: "Data provided by: **provider**" on the left, the update time on the right. Cards are slightly taller.
+- Tytuł meczu: gospodarz z lewej, gość z prawej, małe „vs.” pośrodku; długie nazwy zawijają się na dwie linie i zmniejszają, bez łamania słów. Inicjały w zastępczych herbach pomijają znaki typu „&”.
+- Match title: host left, guest right, a small "vs." in the middle; long names wrap onto two lines and shrink without breaking words. Initials in placeholder crests skip characters such as "&".
 - Herby klubów zagranicznych z [football-logos.cc](https://football-logos.cc), gdy kalendarzeligowe.pl nie ma herbu. Źródła danych i herbów są wymienione w oknie „O aplikacji”.
 - Foreign club crests from [football-logos.cc](https://football-logos.cc) when kalendarzeligowe.pl has none. Data and crest sources are listed in the About window.
 - Nazwy klubów w kolumnach (gospodarz z lewej, gość z prawej), gdy mecz nie mieści się w jednej linii; godziny meczów w strefie czasowej telewizora, także dla meczów bez ustalonej godziny.

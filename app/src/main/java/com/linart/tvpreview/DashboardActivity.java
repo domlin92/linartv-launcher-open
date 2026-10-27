@@ -77,6 +77,9 @@ public final class DashboardActivity extends Activity {
     private static final int DASHBOARD_CARD_Y = 328;
     /** Card height; 12 units taller than before so the data provider fits under the crests. */
     private static final int CARD_H = 298;
+    /** Match title styles under comparison. */
+    private static final int TITLE_LINE = 0, TITLE_VS = 1, TITLE_TICKER = 2;
+    private static final int MATCH_TITLE_STYLE = TITLE_VS;
     /** Crest box on match cards; leaves room for the data provider line below. */
     private static final int CREST_SIZE = 118;
     private static final int SINGLE_COLUMN_X = 1114;
@@ -210,6 +213,13 @@ public final class DashboardActivity extends Activity {
     private boolean fahrenheit;
     private Locale displayLocale() { return english ? EN : PL; }
     private String tr(String polish, String englishText) { return english ? englishText : polish; }
+
+    /** "pl" / "en" as chosen, or "auto": Polish only when the system language is Polish. */
+    static boolean englishFor(String language) {
+        if ("pl".equals(language)) return false;
+        if ("en".equals(language)) return true;
+        return !"pl".equals(Locale.getDefault().getLanguage());
+    }
     private boolean screensaverActive;
     private boolean suppressSaverKeyUp;
     private boolean suppressSaverTouch;
@@ -277,7 +287,8 @@ public final class DashboardActivity extends Activity {
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         scale = Math.min(metrics.widthPixels / (float) W, metrics.heightPixels / (float) H);
         SharedPreferences saved = getPreferences(MODE_PRIVATE);
-        english = "en".equals(saved.getString("language", "pl"));
+        // New installs follow the TV's language: Polish system -> Polish, any other -> English.
+        english = englishFor(saved.getString("language", "auto"));
         fahrenheit = "f".equals(saved.getString("temperature_unit", "c"));
         clubOneCalendar = configuredCalendar(saved, 1);
         clubTwoCalendar = configuredCalendar(saved, 2);
@@ -1110,10 +1121,11 @@ public final class DashboardActivity extends Activity {
     }
 
     private void showLanguageSetup() {
-        showChoiceDialog(tr("Język", "Language"), new String[]{"Polski", "English"}, which -> {
-            boolean selectedEnglish = which == 1;
-            english = selectedEnglish;
-            getPreferences(MODE_PRIVATE).edit().putString("language", english ? "en" : "pl").apply();
+        String[] choices = {tr("Systemowy", "System"), "Polski", "English"};
+        showChoiceDialog(tr("Język", "Language"), choices, which -> {
+            String language = which == 0 ? "auto" : which == 1 ? "pl" : "en";
+            english = englishFor(language);
+            getPreferences(MODE_PRIVATE).edit().putString("language", language).apply();
             // Update the still-open overview in place. Dialog dismiss listeners
             // can run after this callback; do not depend on their ordering.
             applyVisualSettingsNow();
@@ -1596,17 +1608,44 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         glow.animate().alpha(focused ? 1f : 0f).setDuration(170).start();
     }
 
-    private void refreshStamp(long updatedAt, int x, int y, int width) {
-        String label = updatedAt > 0
-                ? tr("odświeżono dane:\n", "updated:\n")
-                    + new SimpleDateFormat(english ? "dd MMM yyyy HH:mm" : "dd.MM.yyyy HH:mm",
-                            displayLocale()).format(new Date(updatedAt))
+    /**
+     * Narrow strip across the bottom of a card: "Dane dostarcza: <b>provider</b> | odświeżono:
+     * 27.10.2026 22:07". Replaces the corner refresh stamp; required credit for fixtur.es.
+     */
+    /** True when the name fits in two lines of the given width without breaking a word. */
+    private static boolean fitsTwoLines(String name, android.text.TextPaint paint, int width) {
+        for (String word : name.split("\\s+")) if (paint.measureText(word) > width) return false;
+        android.text.StaticLayout layout = android.text.StaticLayout.Builder
+                .obtain(name, 0, name.length(), paint, width).build();
+        return layout.getLineCount() <= 2;
+    }
+
+    private void cardFooter(int x, int y, int w, int h, String provider, long updatedAt) {
+        final int stripH = 26;
+        View strip = new View(this);
+        GradientDrawable band = new GradientDrawable();
+        float r = px(34);
+        band.setCornerRadii(new float[]{0, 0, 0, 0, r, r, r, r});
+        band.setColor(night ? 0x33000000 : 0x1F000000);
+        strip.setBackground(band);
+        place(strip, x + 1, y + h - stripH - 1, w - 2, stripH);
+        String refreshed = updatedAt > 0
+                ? tr("odświeżono: ", "updated: ") + new SimpleDateFormat(
+                        english ? "dd MMM yyyy HH:mm" : "dd.MM.yyyy HH:mm", displayLocale()).format(new Date(updatedAt))
                 : tr("oczekiwanie na dane", "waiting for data");
-        TextView stamp = text(label, 13, muted, false, x, y, width, 43);
-        stamp.setGravity(Gravity.RIGHT | Gravity.TOP);
-        stamp.setSingleLine(false);
-        stamp.setMaxLines(2);
-        stamp.setEllipsize(null);
+        String label = tr("Dane dostarcza: ", "Data provided by: ");
+        android.text.SpannableStringBuilder text = new android.text.SpannableStringBuilder(label);
+        int start = text.length();
+        text.append(provider);
+        text.setSpan(new android.text.style.StyleSpan(Typeface.BOLD), start, text.length(),
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        TextView left = text("", 12, muted, false, x + 29, y + h - stripH - 1, w - 58, stripH);
+        left.setIncludeFontPadding(false);
+        left.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        left.setText(text);
+        TextView right = text(refreshed, 12, muted, false, x + 29, y + h - stripH - 1, w - 58, stripH);
+        right.setIncludeFontPadding(false);
+        right.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
     }
 
 
@@ -1811,47 +1850,73 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                     match == null ? 169 : 240, 35);
         }
         // Data provider in the bottom-left corner, under the crests.
-        if (match != null) dataProviderLine(feed, x + 29, y + 272, color);
-        refreshStamp(feed.updatedAt, x + 330, y + 19, 144);
+        cardFooter(x, y, w, h, dataProvider(feed), feed.updatedAt);
         String title = match == null ? tr("Brak nadchodzących meczów", "No upcoming matches")
                 : shortName(match.home) + " – " + shortName(match.away);
         TextView teams = text(title, 29, color, true, x + 29, y + 68, 405, 80);
         teams.setSingleLine(false);
         teams.setMaxLines(2);
-        if (match != null) {
-            // One line when it fits; otherwise host on line 1 and guest on line 2, so a break
-            // never splits a club name ("Levante UD –" / "Club Atlético de Madrid").
+        if (match != null && MATCH_TITLE_STYLE == TITLE_TICKER) {
+            // Variant 2 (comparison): one line "Host – Guest", scrolling only when it does not fit.
+            teams.setText("");
+            MatchTitleTicker ticker = new MatchTitleTicker(this,
+                    shortName(match.home) + " – " + shortName(match.away), px(29), color);
+            place(ticker, x + 29, y + 74, 440, 48);
+        } else if (match != null) {
+            // Host on the first line, guest on the second (no dash). Both share one font size,
+            // shrunk until the longer line fits. Between them: a thin line, or a handwritten
+            // "vs" in front of the guest (TITLE_VS, Android's built-in "cursive" font).
+            teams.setText("");
+            boolean vs = MATCH_TITLE_STYLE == TITLE_VS;
             android.text.TextPaint paint = new android.text.TextPaint(teams.getPaint());
-            String homeLine = shortName(match.home) + " –", awayLine = shortName(match.away);
-            int size = 29;
-            paint.setTextSize(px(size));
-            if (paint.measureText(title) > px(405)) {
-                // Too long for one line: host in the left column, guest in the right one, so
-                // each name wraps only within its own column.
-                teams.setText("");
-                String homeName = shortName(match.home), awayName = shortName(match.away);
-                int column = 186;
-                while (size > 20 && (longestWord(paint, homeName) > px(column)
-                        || longestWord(paint, awayName) > px(column)
-                        || lines(paint, homeName, px(column)) > 2 || lines(paint, awayName, px(column)) > 2))
-                    paint.setTextSize(px(--size));
-                // The host column is only as wide as its longest line, so the dash sits right after it.
-                int homeWidth = Math.min(column, Math.round(widestLine(paint, homeName, px(column)) / scale) + 4);
-                int dashX = x + 29 + homeWidth + 4, awayX = dashX + 36;
-                int awayWidth = x + 29 + 405 - awayX;
-                TextView homeView = text(homeName, size, color, true, x + 29, y + 68, homeWidth, 80);
-                TextView dash = text("–", size, color, true, dashX, y + 68, 30, 80); // centred in a 30-unit slot
-                TextView awayView = text(awayName, size, color, true, awayX, y + 68, awayWidth, 80);
-                for (TextView v : new TextView[]{homeView, dash, awayView}) {
+            android.text.TextPaint vsPaint = new android.text.TextPaint(paint);
+            vsPaint.setTypeface(Typeface.DEFAULT);
+            String homeName = shortName(match.home), awayName = shortName(match.away);
+            if (vs) {
+                // Two columns: host left, guest right, small "vs." in the middle. A long name wraps
+                // onto two lines; the shared font shrinks until no word has to be broken.
+                final int col = 200, gapX = 40, bandY = y + 58, bandH = 86;
+                int fit = 27;
+                for (; fit > 16; fit--) {
+                    paint.setTextSize(px(fit));
+                    if (fitsTwoLines(homeName, paint, px(col)) && fitsTwoLines(awayName, paint, px(col))) break;
+                }
+                TextView homeView = text(homeName, fit, color, true, x + 29, bandY, col, bandH);
+                TextView awayView = text(awayName, fit, color, true, x + 29 + col + gapX, bandY, col, bandH);
+                for (TextView v : new TextView[]{homeView, awayView}) {
                     v.setSingleLine(false);
                     v.setMaxLines(2);
-                    v.setGravity(Gravity.TOP);
+                    v.setIncludeFontPadding(false);
+                    v.setLineSpacing(0, 0.95f);
                 }
-                dash.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-                if (Math.max(lines(paint, homeName, px(column)), lines(paint, awayName, px(column))) == 2) {
-                    // Two-line names: the dash sits between the two lines, not on the first one.
-                    dash.setPadding(0, Math.round(paint.getFontSpacing() * 0.36f), 0, 0);
-                }
+                homeView.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+                awayView.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+                awayView.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+                TextView vsView = text("vs.", 17, (color & 0x00FFFFFF) | 0xB0000000, false,
+                        x + 29 + col, bandY, gapX, bandH);
+                vsView.setIncludeFontPadding(false);
+                vsView.setGravity(Gravity.CENTER);
+                teams.setGravity(Gravity.TOP);
+            }
+            final int span = 440; // host left-aligned, guest right-aligned below
+            int size = 27, vsWidth = 0;
+            while (true) {
+                paint.setTextSize(px(size));
+                vsPaint.setTextSize(px(size));
+                if (size <= 18 || Math.max(paint.measureText(homeName),
+                        paint.measureText(awayName)) <= px(span)) break;
+                size--;
+            }
+            if (!vs) {
+            TextView homeView = text(homeName, size, color, true, x + 29, vs ? y + 60 : y + 64, vs ? span : 405, vs ? 34 : 38);
+            TextView awayView = text(awayName, size, color, true, x + 29, vs ? y + 111 : y + 107, vs ? span : 405, vs ? 34 : 38);
+            for (TextView v : new TextView[]{homeView, awayView}) {
+                v.setIncludeFontPadding(false);
+                v.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            }
+                View separator = new View(this);
+                separator.setBackgroundColor((color & 0x00FFFFFF) | 0x55000000);
+                place(separator, x + 29, y + 104, 120, 1);
             }
         }
         teams.setGravity(Gravity.TOP);
@@ -1862,17 +1927,17 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             return;
         }
         String crestLeague = feed.leagueSlug;
-        crestBadge(match.home, crestLeague, match.homeTeamId, x + 14, y + 147);
-        crestBadge(match.away, crestLeague, match.awayTeamId, x + 146, y + 147);
+        crestBadge(match.home, crestLeague, match.homeTeamId, x + 14, y + 145);
+        crestBadge(match.away, crestLeague, match.awayTeamId, x + 146, y + 145);
         String time = match.hasTime ? new SimpleDateFormat("HH:mm", PL).format(new Date(match.startsAt)) : "—:—";
-        text(time, 61, color, true, x + 290, y + 163, 190, 75).setGravity(Gravity.CENTER);
+        text(time, 61, color, true, x + 290, y + 156, 190, 75).setGravity(Gravity.CENTER);
         if (live) {
             View liveAura = new View(this);
             liveAura.setBackground(new AppGlowDrawable(15, false, 0x90FF3556, 0xA5FF7186));
             liveAura.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
-            place(liveAura, x + 306, y + 220, 158, 74);
+            place(liveAura, x + 306, y + 213, 158, 74);
             TextView liveBadge = text("LIVE", 20, 0xFFFFFFFF, true,
-                    x + 330, y + 242, 110, 30);
+                    x + 330, y + 235, 110, 30);
             liveBadge.setGravity(Gravity.CENTER);
             liveBadge.setBackground(shape(0xFFD8283F, 0xFFFF9AA6, 15));
         } else if (daysUntil(match) <= 0) {
@@ -1880,14 +1945,14 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             View todayAura = new View(this);
             todayAura.setBackground(new AppGlowDrawable(15, false, 0x9022B35E, 0xA562D98C));
             todayAura.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
-            place(todayAura, x + 306, y + 220, 158, 74);
+            place(todayAura, x + 306, y + 213, 158, 74);
             TextView todayBadge = text(tr("DZISIAJ", "TODAY"), 20, 0xFFFFFFFF, true,
-                    x + 330, y + 242, 110, 30);
+                    x + 330, y + 235, 110, 30);
             todayBadge.setGravity(Gravity.CENTER);
             todayBadge.setBackground(shape(0xFF1F9D52, 0xFF8EE6AE, 15));
         } else {
             // Two lines under the kick-off time: "Sobota, 7 listopada" / "za 12 dni".
-            TextView date = text(matchDateLabel(match), 17, color, false, x + 260, y + 229, 250, 48);
+            TextView date = text(matchDateLabel(match), 17, color, false, x + 260, y + 222, 250, 48);
             date.setSingleLine(false);
             date.setMaxLines(2);
             date.setIncludeFontPadding(false);
@@ -1921,29 +1986,6 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     /** Who provides this club's fixtures; shown on the card (required by some providers). */
     private static String dataProvider(CalendarFeed feed) {
         return CalendarScope.isForeign(feed.url) ? FixturesClient.PROVIDER : "kalendarzeligowe.pl";
-    }
-
-    /** Third header line: "Dane dostarcza:" and the provider's address in a softly glowing pill. */
-    private void dataProviderLine(CalendarFeed feed, int x, int y, int color) {
-        String label = tr("Dane dostarcza:", "Data provided by:");
-        String provider = dataProvider(feed);
-        // Label and pill share one row (same top and height, text centred vertically).
-        TextView caption = text(label, 13, (color & 0x00FFFFFF) | 0xC0000000, false, x, y - 2, 200, 22);
-        caption.setIncludeFontPadding(false);
-        caption.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        int captionWidth = Math.round(caption.getPaint().measureText(label) / scale) + 6;
-        TextView pill = text(provider, 13, night ? 0xFFE8F0FF : 0xFF183154, false, x + captionWidth, y - 2, 140, 22);
-        pill.setIncludeFontPadding(false);
-        pill.setGravity(Gravity.CENTER);
-        int pillWidth = Math.round(pill.getPaint().measureText(provider) / scale) + 16;
-        View glow = new View(this);
-        glow.setBackground(new AppGlowDrawable(10, false, 0x557FA6E6, 0x6699C2FF));
-        glow.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
-        place(glow, x + captionWidth - 6, y - 8, pillWidth + 12, 34);
-        glow.bringToFront();
-        pill.bringToFront();
-        setLeftPx(pill, px(x + captionWidth), px(pillWidth));
-        pill.setBackground(shape(night ? 0xCC1E2F55 : 0xCCE4ECF6, night ? 0xFF7FA6E6 : 0xFF6994CC, 8));
     }
 
     private static float longestWord(android.text.TextPaint paint, String text) {
@@ -2056,11 +2098,27 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                 .add(new CrestSlot(image, fallback, club, league, teamId));
     }
 
-    private String clubInitials(String club) {
-        String[] words = club.trim().split("\\s+");
-        if (words.length > 1)
-            return (words[0].substring(0, 1) + words[1].substring(0, 1)).toUpperCase(PL);
-        return club.substring(0, Math.min(2, club.length())).toUpperCase(PL);
+    /**
+     * Two letters for the crest placeholder from the club's words, skipping signs such as "&"
+     * ("Brighton & Hove Albion" -> "BH"), years ("KSZO 1929 Ostrowiec" -> "KO") and short
+     * prefixes like "FC" when there is more ("FC Barcelona" -> "BA").
+     */
+    static String clubInitials(String club) {
+        List<String> words = new ArrayList<>();
+        for (String w : club.trim().split("[\\s\\-]+")) {
+            String letters = w.replaceAll("[^\\p{L}\\p{N}]", "");
+            if (!letters.isEmpty()) words.add(letters);
+        }
+        List<String> meaningful = new ArrayList<>();
+        for (String w : words)
+            if (!w.matches("(?i)fc|afc|cf|ac|as|sc|sv|rc|us|ss|ssc|cd|ud|vfb|tsg|fsv|bv|\\d+"))
+                meaningful.add(w);
+        if (meaningful.isEmpty()) meaningful = words;
+        if (meaningful.isEmpty()) return "?";
+        if (meaningful.size() > 1)
+            return (meaningful.get(0).substring(0, 1) + meaningful.get(1).substring(0, 1)).toUpperCase(PL);
+        String one = meaningful.get(0);
+        return one.substring(0, Math.min(2, one.length())).toUpperCase(PL);
     }
 
     private void updateCrestViews(String club) {
@@ -2164,7 +2222,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         weatherHeaderIcon.setPadding(px(7), px(4), px(7), px(4));
         place(weatherHeaderIcon, x + 28, y + 22, 42, 36);
         text(tr("Pogoda", "Weather"), 20, weatherInk, false, x + 84, y + 22, 155, 35);
-        refreshStamp(forecastUpdatedAt, x + 242, y + 19, 233);
+        cardFooter(x, y, w, h, "Open-Meteo.com", forecastUpdatedAt);
         // Top row: icon, temperature and city share one vertical centre (y+104).
         // The icon's drawn left edge lines up with the header icon (x+28).
         android.graphics.Bitmap currentBitmap = weatherIcons.bitmap(currentIcon, px(100));
