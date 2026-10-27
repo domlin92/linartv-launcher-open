@@ -30,6 +30,10 @@ final class CrestNameMatcher {
     private static final Map<String, String> EXCEPTIONS = new HashMap<>();
     static {
         EXCEPTIONS.put("Real Racing Club de Santander", "racing");
+        // fixtur.es club names
+        EXCEPTIONS.put("Racing de Santander", "racing");
+        EXCEPTIONS.put("Athletic de Bilbao", "athletic-club");
+        EXCEPTIONS.put("RC Strasbourg", "rc-strasbourg-alsace");
     }
 
     private CrestNameMatcher() { }

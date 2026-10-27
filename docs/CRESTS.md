@@ -1,13 +1,23 @@
 # Herby klubowe / Club crests
 
-**PL.** Od wersji 1.0.1 aplikacja nie zawiera żadnych herbów. Wszystkie herby pochodzą z [kalendarzeligowe.pl](https://kalendarzeligowe.pl) (`/api/teams/{id}/logo`, PNG z przezroczystym tłem), z którego LinarTV korzysta za zgodą właściciela serwisu.
+**PL.** Aplikacja nie zawiera żadnych plików herbów — ani w repozytorium, ani w APK. Herby są pobierane dopiero na telewizorze, raz na klub, i zapisywane w jego pamięci.
 
-### Jak aplikacja dobiera herb
-1. Każdy mecz z API ma identyfikator drużyny i wersję herbu (`crestVer`). Herb jest pobierany po identyfikatorze i zapisywany w pamięci telewizora (`crests-by-team`).
-2. Herb jest pobierany ponownie tylko wtedy, gdy zmieni się jego wersja. Bez znanej wersji (stare dane) aplikacja sprawdza go co 7 dni.
-3. Drużyny bez herbu (dziś większość IV ligi) mają inicjały. Aplikacja sprawdza, czy herb się pojawił, najwyżej co 12 godzin.
-4. Gdy mecz nie ma identyfikatora drużyny (bardzo stare dane), drużyna jest szukana po dokładnej nazwie, tylko jeśli wynik jest jednoznaczny.
+### Skąd pochodzą
+1. **[kalendarzeligowe.pl](https://kalendarzeligowe.pl)** (`/api/teams/{id}/logo`) — źródło podstawowe, używane za zgodą właściciela serwisu. Herb jest pobierany ponownie tylko wtedy, gdy zmieni się jego wersja (`crestVer`).
+2. **[football-logos.cc](https://football-logos.cc)** — dla klubów, których herbu nie ma w kalendarzeligowe.pl (głównie kluby zagraniczne z fixtur.es i ich rywale w pucharach). Herb jest dopasowywany po nazwie klubu (`CrestNameMatcher`, reguły i wyjątki w kodzie i testach). Zgodnie z prośbą strony podajemy ją jako źródło w README, w tym pliku i w oknie „O aplikacji”.
+3. Bez herbu — inicjały klubu.
 
-Herby są znakami poszczególnych klubów i **nie są objęte licencją MIT** tego repozytorium. Repozytorium nie zawiera plików herbów.
+### Prawa i usuwanie
+Herby są znakami poszczególnych klubów i **nie są objęte licencją MIT** tego repozytorium. Służą wyłącznie do rozpoznania drużyn w terminarzu. Jeśli reprezentujesz klub albo źródło herbów i chcesz, by herb przestał być wyświetlany, załóż zgłoszenie (issue) w repozytorium — usuniemy go w najbliższym wydaniu.
 
-**EN.** Since 1.0.1 the app bundles no crests. All crests come from [kalendarzeligowe.pl](https://kalendarzeligowe.pl) (`/api/teams/{id}/logo`, transparent PNG), used with the site owner's permission. Every match from the API carries the team id and a crest version (`crestVer`); a crest is cached on the TV per team and downloaded again only when its version changes (every 7 days when the version is unknown). Teams without a crest (most of IV liga for now) show initials; the app checks for a new crest at most every 12 hours. Club crests are **not covered by the MIT license**, and the repository contains no crest files.
+---
+
+**EN.** The app contains no crest files, neither in the repository nor in the APK. Crests are downloaded on the TV only, once per club, and cached there.
+
+### Sources
+1. **[kalendarzeligowe.pl](https://kalendarzeligowe.pl)** (`/api/teams/{id}/logo`) — the main source, used with the site owner's permission; a crest is downloaded again only when its version (`crestVer`) changes.
+2. **[football-logos.cc](https://football-logos.cc)** — for clubs without a crest at kalendarzeligowe.pl (mostly foreign clubs from fixtur.es and their cup opponents), matched by club name (`CrestNameMatcher`, rules and exceptions in the code and tests). As the site asks, it is credited in the README, in this file and in the app's About window.
+3. No crest — the club's initials.
+
+### Rights and removal
+Crests are trademarks of their clubs and are **not covered by the MIT license**. They are shown only to identify teams in the schedule. If you represent a club or a crest source and want a crest removed, please open an issue — it will be removed in the next release.

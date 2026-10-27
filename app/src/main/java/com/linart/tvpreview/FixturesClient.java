@@ -202,9 +202,9 @@ final class FixturesClient {
         return value.replace("\\,", ",").replace("\\;", ";").replace("\\n", " ").replace("\\\\", "\\");
     }
 
-    // TEST ONLY (2026-10-27): foreign club crests from football-logos.cc (Leo4815162342/football-logos).
-    // No license yet - the maintainer will ask the author before any release. Images are only
-    // downloaded on the TV, never added to the repository.
+    // Crests of foreign clubs from football-logos.cc (credited in README, CRESTS.md and "About",
+    // as the site asks). Images are downloaded once on the TV and cached; none are in the
+    // repository or the APK. A club or the site can ask for removal - see docs/CRESTS.md.
     private static final Map<String, String> LOGOS = new java.util.concurrent.ConcurrentHashMap<>();
     /** Per country page: crest file names and their image URLs. */
     private static final Map<String, List<String>> LOGO_NAMES = new java.util.concurrent.ConcurrentHashMap<>();

@@ -7,8 +7,8 @@ Every release gets an entry here in Polish and English. Newest first.
 
 - Na karcie meczu podpis źródła danych w lewym dolnym rogu: „Dane dostarcza: kalendarzeligowe.pl / fixtur.es”. Karty są nieco wyższe.
 - The match card shows its data provider in the bottom-left corner: "Data provided by: kalendarzeligowe.pl / fixtur.es". Cards are slightly taller.
-- **(Test, przed wydaniem do decyzji)** Herby klubów zagranicznych z football-logos.cc, gdy kalendarzeligowe.pl nie ma herbu; dopasowanie po nazwie (`CrestNameMatcher`). Przed wydaniem: zgoda autora i podziękowania (x.com/Leo4815162342, link do football-logos.cc).
-- **(Test, decision before release)** Foreign club crests from football-logos.cc when kalendarzeligowe.pl has none; matched by name (`CrestNameMatcher`). Before release: the author's consent and credit (x.com/Leo4815162342, link to football-logos.cc).
+- Herby klubów zagranicznych z [football-logos.cc](https://football-logos.cc), gdy kalendarzeligowe.pl nie ma herbu. Źródła danych i herbów są wymienione w oknie „O aplikacji”.
+- Foreign club crests from [football-logos.cc](https://football-logos.cc) when kalendarzeligowe.pl has none. Data and crest sources are listed in the About window.
 - Nazwy klubów w kolumnach (gospodarz z lewej, gość z prawej), gdy mecz nie mieści się w jednej linii; godziny meczów w strefie czasowej telewizora, także dla meczów bez ustalonej godziny.
 - Club names in columns (host left, guest right) when the match does not fit on one line; kick-off times in the TV's time zone, also for date-only matches.
 - **Ligi zagraniczne:** Anglia, Francja, Hiszpania, Niemcy i Włochy (Premier League, Ligue 1, La Liga, Bundesliga, Serie A). W kreatorze najpierw kraj (Polska, potem reszta alfabetycznie), potem liga i klub. Dane z fixtur.es: liga, krajowe puchary (np. EFL Cup, Copa del Rey) i europejskie puchary w jednym terminarzu.

@@ -66,7 +66,7 @@ Signed releases: see [docs/RELEASING.md](docs/RELEASING.md). What changed in eac
 - Weather data: [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0); city search: Open-Meteo geocoding / GeoNames (CC BY 4.0).
 - Weather icons: [Meteocons](https://github.com/basmilius/weather-icons) by Bas Milius (MIT), bundled in the app.
 - Weather Icons font by Erik Flowers (SIL OFL 1.1) — used for the °C / °F sign.
-- Club crests are loaded from kalendarzeligowe.pl and belong to their clubs — see [docs/CRESTS.md](docs/CRESTS.md).
+- Club crests: [kalendarzeligowe.pl](https://kalendarzeligowe.pl); foreign clubs without a crest there: [football-logos.cc](https://football-logos.cc). Crests belong to their clubs — see [docs/CRESTS.md](docs/CRESTS.md).
 
 ### License
 Code: [MIT](LICENSE). Club crests and third-party logos are not covered by the code license.
@@ -117,7 +117,7 @@ Podpisane wydania: [docs/RELEASING.md](docs/RELEASING.md). Zmiany w kolejnych we
 - Dane pogodowe: [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0); wyszukiwanie miast: geokodowanie Open-Meteo / GeoNames (CC BY 4.0).
 - Ikony pogody: [Meteocons](https://github.com/basmilius/weather-icons), Bas Milius (MIT), wbudowane w aplikację.
 - Font Weather Icons: Erik Flowers (SIL OFL 1.1) — znak °C / °F.
-- Herby są pobierane z kalendarzeligowe.pl i należą do klubów — zobacz [docs/CRESTS.md](docs/CRESTS.md).
+- Herby: [kalendarzeligowe.pl](https://kalendarzeligowe.pl); kluby zagraniczne bez herbu tam: [football-logos.cc](https://football-logos.cc). Herby należą do klubów — zobacz [docs/CRESTS.md](docs/CRESTS.md).
 
 ### Licencja
 Kod: [MIT](LICENSE). Herby klubów i logo innych firm nie są objęte licencją kodu.

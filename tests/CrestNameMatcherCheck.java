@@ -20,6 +20,10 @@ public final class CrestNameMatcherCheck {
                 {"RB Leipzig", "rb-leipzig", "1-fc-lokomotive-leipzig,bsg-chemie-leipzig,rb-leipzig"},
                 {"Athletic Club", "athletic-club", "athletic-club,atletico-madrid"},
                 {"Real Racing Club de Santander", "racing", "racing,racing-club-ferrol"},
+                {"RC Strasbourg", "rc-strasbourg-alsace", "as-strasbourg,rc-strasbourg-alsace"},
+                {"Athletic de Bilbao", "athletic-club", "athletic-club,atletico-madrid"},
+                {"S.S. Lazio", "lazio", "lazio,latina"},
+                {"1.FC Köln", "koln", "koln,fortuna-koln"},
                 {"BV Borussia 1909 (Dortmund)", "borussia-dortmund", "borussia-dortmund,borussia-monchengladbach,asc-09-dortmund"},
         };
         for (String[] c : cases) {

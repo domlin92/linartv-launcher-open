@@ -104,7 +104,7 @@ final class CrestRepository {
     private void load(Entry e, int id, long version, boolean force) {
         try {
             if (closed) return;
-            // football-logos.cc only for clubs without a crest at kalendarzeligowe.pl (TEST ONLY).
+            // football-logos.cc only for clubs without a crest at kalendarzeligowe.pl (mostly foreign clubs).
             // A crest version from the API means kalendarzeligowe.pl now has the crest: use it again.
             if ((id <= 0 || version <= 0 && prefs.getBoolean("nocrest_" + id, false)) && loadForeignLogo(e)) return;
             if (id <= 0) id = findTeamId(e.name);
@@ -147,7 +147,7 @@ final class CrestRepository {
         }
     }
     /**
-     * TEST ONLY: foreign clubs' crests from football-logos.cc (see FixturesClient.logoUrl).
+     * Foreign clubs' crests from football-logos.cc (see FixturesClient.logoUrl), credited as the site asks.
      * The address contains a content hash, so a cached file never needs refreshing.
      */
     private boolean loadForeignLogo(Entry e) throws Exception {
@@ -249,7 +249,9 @@ final class CrestRepository {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setConnectTimeout(8000);
         connection.setReadTimeout(8000);
-        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Android TV) AppleWebKit/537.36 Chrome/128.0.0.0 Safari/537.36");
+        connection.setRequestProperty("User-Agent", url.startsWith("https://fixtur.es/")
+                ? "LinarTV (Android TV launcher; +https://github.com/domlin92/linartv-launcher-open)" // fixtur.es rule
+                : "Mozilla/5.0 (Android TV) AppleWebKit/537.36 Chrome/128.0.0.0 Safari/537.36");
         connection.setRequestProperty("Referer", "https://kalendarzeligowe.pl/");
         try {
             if (connection.getResponseCode() != 200) throw new IllegalStateException("HTTP " + connection.getResponseCode());
