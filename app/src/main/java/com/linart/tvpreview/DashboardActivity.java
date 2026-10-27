@@ -776,13 +776,13 @@ public final class DashboardActivity extends Activity {
         about.setGravity(Gravity.CENTER);
         about.setOnClickListener(v -> showMessageDialog("LinarTV " + appVersion(),
                 tr("Launcher dla Android TV\n\n"
-                        + "Terminarze polskich klubów: kalendarzeligowe.pl\n"
+                        + "Terminarze i herby polskich klubów: kalendarzeligowe.pl\n"
                         + "Terminarze pozostałych klubów: fixtur.es\n"
                         + "Herby pozostałych klubów: football-logos.cc\n"
                         + "Pogoda: Open-Meteo.com (CC BY 4.0) · ikony Meteocons (MIT)\n\n"
                         + "Herby należą do klubów. Na prośbę klubu lub źródła usuniemy herb.",
                    "Launcher for Android TV\n\n"
-                        + "Polish club fixtures: kalendarzeligowe.pl\n"
+                        + "Polish club fixtures and crests: kalendarzeligowe.pl\n"
                         + "Other club fixtures: fixtur.es\n"
                         + "Other club crests: football-logos.cc\n"
                         + "Weather: Open-Meteo.com (CC BY 4.0) · Meteocons icons (MIT)\n\n"
