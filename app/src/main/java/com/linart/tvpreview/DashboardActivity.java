@@ -78,7 +78,7 @@ public final class DashboardActivity extends Activity {
     /** Card height; 12 units taller than before so the data provider fits under the crests. */
     private static final int CARD_H = 298;
     /** Match title styles under comparison. */
-    private static final int TITLE_LINE = 0, TITLE_VS = 1, TITLE_TICKER = 2;
+    private static final int TITLE_LINE = 0, TITLE_VS = 1;
     private static final int MATCH_TITLE_STYLE = TITLE_VS;
     /** Crest box on match cards; leaves room for the data provider line below. */
     private static final int CREST_SIZE = 118;
@@ -1856,13 +1856,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         TextView teams = text(title, 29, color, true, x + 29, y + 68, 405, 80);
         teams.setSingleLine(false);
         teams.setMaxLines(2);
-        if (match != null && MATCH_TITLE_STYLE == TITLE_TICKER) {
-            // Variant 2 (comparison): one line "Host – Guest", scrolling only when it does not fit.
-            teams.setText("");
-            MatchTitleTicker ticker = new MatchTitleTicker(this,
-                    shortName(match.home) + " – " + shortName(match.away), px(29), color);
-            place(ticker, x + 29, y + 74, 440, 48);
-        } else if (match != null) {
+        if (match != null) {
             // Host on the first line, guest on the second (no dash). Both share one font size,
             // shrunk until the longer line fits. Between them: a thin line, or a handwritten
             // "vs" in front of the guest (TITLE_VS, Android's built-in "cursive" font).
@@ -2222,7 +2216,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         weatherHeaderIcon.setPadding(px(7), px(4), px(7), px(4));
         place(weatherHeaderIcon, x + 28, y + 22, 42, 36);
         text(tr("Pogoda", "Weather"), 20, weatherInk, false, x + 84, y + 22, 155, 35);
-        cardFooter(x, y, w, h, "Open-Meteo.com", forecastUpdatedAt);
+        cardFooter(x, y, w, h, "open-meteo.com", forecastUpdatedAt);
         // Top row: icon, temperature and city share one vertical centre (y+104).
         // The icon's drawn left edge lines up with the header icon (x+28).
         android.graphics.Bitmap currentBitmap = weatherIcons.bitmap(currentIcon, px(100));
