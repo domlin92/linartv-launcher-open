@@ -32,6 +32,33 @@ public final class CrestNameMatcherCheck {
             String got = index < 0 ? "" : files.get(index);
             if (!got.equals(c[1])) throw new AssertionError(c[0] + ": expected '" + c[1] + "', got '" + got + "'");
         }
-        System.out.println("Crest name matcher checks: " + cases.length + " passed");
+        // File name plus display name (football-logos.cc alt text), as the app uses them.
+        List<String> spainFiles = Arrays.asList("deportivo", "deportivo-la-coruna", "racing", "athletic-club");
+        List<String> spainTitles = Arrays.asList("Deportivo Alavés", "Deportivo La Coruña", "Racing Santander", "Athletic Club Bilbao");
+        List<String> otherFiles = Arrays.asList("paris-fc", "paris-saint-germain", "bayern-munchen", "bayern-alzenau", "koln");
+        List<String> otherTitles = Arrays.asList("Paris FC", "PSG", "Bayern Munich", "FC Bayern Alzenau", "Cologne");
+        String[][] titled = {
+                {"Deportivo Alavés", "deportivo", "spain"},
+                {"RC Deportivo", "deportivo-la-coruna", "spain"},
+                {"Racing de Santander", "racing", "spain"},
+                {"Athletic de Bilbao", "athletic-club", "spain"},
+                {"Paris Saint-Germain", "paris-saint-germain", "other"},
+                {"Paris FC", "paris-fc", "other"},
+                {"Bayern München", "bayern-munchen", "other"},
+                {"1.FC Köln", "koln", "other"},
+        };
+        for (String[] c : titled) {
+            boolean spain = c[2].equals("spain");
+            List<String> files = spain ? spainFiles : otherFiles;
+            int index = CrestNameMatcher.best(c[0], files, spain ? spainTitles : otherTitles);
+            String got = index < 0 ? "" : files.get(index);
+            if (!got.equals(c[1])) throw new AssertionError(c[0] + ": expected '" + c[1] + "', got '" + got + "'");
+        }
+        // Across countries the stronger match wins: Aston Villa (England) over Villarreal (Spain).
+        int[] england = CrestNameMatcher.strength("Aston Villa", "aston-villa", "Aston Villa");
+        int[] spain = CrestNameMatcher.strength("Aston Villa", "villarreal", "Villarreal");
+        if (CrestNameMatcher.compareStrength(england, spain) <= 0)
+            throw new AssertionError("Aston Villa should prefer England over Villarreal");
+        System.out.println("Crest name matcher checks: " + (cases.length + titled.length + 1) + " passed");
     }
 }

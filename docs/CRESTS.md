@@ -4,7 +4,7 @@
 
 ### Skąd pochodzą
 1. **[kalendarzeligowe.pl](https://kalendarzeligowe.pl)** (`/api/teams/{id}/logo`) — źródło podstawowe, używane za zgodą właściciela serwisu. Herb jest pobierany ponownie tylko wtedy, gdy zmieni się jego wersja (`crestVer`).
-2. **[football-logos.cc](https://football-logos.cc)** — dla klubów, których herbu nie ma w kalendarzeligowe.pl (głównie kluby zagraniczne z fixtur.es i ich rywale w pucharach). Herb jest dopasowywany po nazwie klubu (`CrestNameMatcher`, reguły i wyjątki w kodzie i testach). Zgodnie z prośbą strony podajemy ją jako źródło w README, w tym pliku i w oknie „O aplikacji”.
+2. **[football-logos.cc](https://football-logos.cc)** — dla klubów z terminarzy fixtur.es (kluby zagraniczne i ich rywale, także w pucharach). Lista herbów z każdej strony kraju jest odświeżana co 7 dni, a każdy herb pobierany raz. Polskie kluby bez herbu w kalendarzeligowe.pl mają inicjały. Herb jest dopasowywany po nazwie klubu (`CrestNameMatcher`, reguły i wyjątki w kodzie i testach). Zgodnie z prośbą strony podajemy ją jako źródło w README, w tym pliku i w oknie „O aplikacji”.
 3. Bez herbu — inicjały klubu.
 
 ### Prawa i usuwanie
@@ -16,7 +16,7 @@ Herby są znakami poszczególnych klubów i **nie są objęte licencją MIT** te
 
 ### Sources
 1. **[kalendarzeligowe.pl](https://kalendarzeligowe.pl)** (`/api/teams/{id}/logo`) — the main source, used with the site owner's permission; a crest is downloaded again only when its version (`crestVer`) changes.
-2. **[football-logos.cc](https://football-logos.cc)** — for clubs without a crest at kalendarzeligowe.pl (mostly foreign clubs from fixtur.es and their cup opponents), matched by club name (`CrestNameMatcher`, rules and exceptions in the code and tests). As the site asks, it is credited in the README, in this file and in the app's About window.
+2. **[football-logos.cc](https://football-logos.cc)** — for clubs from fixtur.es schedules (foreign clubs and their opponents, cups included); the crest list of each country page is refreshed every 7 days and each crest downloaded once; Polish clubs without a crest at kalendarzeligowe.pl show initials. Matched by club name (`CrestNameMatcher`, rules and exceptions in the code and tests). As the site asks, it is credited in the README, in this file and in the app's About window.
 3. No crest — the club's initials.
 
 ### Rights and removal

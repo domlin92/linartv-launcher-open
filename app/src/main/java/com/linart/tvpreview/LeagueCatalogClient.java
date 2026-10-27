@@ -123,12 +123,11 @@ final class LeagueCatalogClient {
             throw new IllegalArgumentException("Unknown team calendar URL");
         Matcher id = Pattern.compile("-(\\d+)/calendar\\.ics(?:\\?.*)?$").matcher(calendarUrl);
         if (!id.find()) throw new IllegalArgumentException("Unknown team calendar URL");
-        return apiMatches(Integer.parseInt(id.group(1)), fromMillis, null);
+        return apiMatches(Integer.parseInt(id.group(1)), fromMillis);
     }
 
-    /** Team matches from the API; with {@code categories} only those competitions (e.g. European cups). */
-    static List<IcsMatchParser.Match> apiMatches(int teamId, long fromMillis,
-                                                 java.util.Set<String> categories) throws Exception {
+    /** All upcoming matches of a team from the API, every competition included. */
+    private static List<IcsMatchParser.Match> apiMatches(int teamId, long fromMillis) throws Exception {
         List<IcsMatchParser.Match> matches = new ArrayList<>();
         for (int page = 1; page <= 10; page++) {
             JSONObject response = readObject("matches?teamId=" + teamId + "&pageSize=100&page=" + page);
@@ -152,8 +151,6 @@ final class LeagueCatalogClient {
                 if (startsAt < fromMillis) continue;
                 JSONObject round = item.optJSONObject("round");
                 JSONObject competition = item.optJSONObject("competition");
-                if (categories != null && (competition == null
-                        || !categories.contains(competition.optString("category")))) continue;
                 MatchCompetition metadata = MatchCompetition.from(
                         competition == null ? "" : competition.optString("name", ""),
                         competition == null ? "" : competition.optString("category", ""),
@@ -169,44 +166,6 @@ final class LeagueCatalogClient {
         }
         matches.sort(Comparator.comparingLong(match -> match.startsAt));
         return matches;
-    }
-
-    /** Teams in this season's Champions League, Europa League and Conference League. */
-    static List<JSONObject> europeanTeams() throws Exception {
-        JSONArray seasons = readArray("seasons");
-        String season = "";
-        for (int i = 0; i < seasons.length(); i++)
-            if (seasons.getJSONObject(i).optBoolean("isCurrent")) season = seasons.getJSONObject(i).getString("name");
-        JSONArray competitions = readArray("competitions?season=" + URLEncoder.encode(season, "UTF-8"));
-        HashMap<Integer, JSONObject> teams = new HashMap<>();
-        for (int j = 0; j < competitions.length(); j++) {
-            JSONObject c = competitions.getJSONObject(j);
-            String category = c.optString("category");
-            if (!category.equals("CHAMPIONS_LEAGUE") && !category.equals("EUROPA_LEAGUE")
-                    && !category.equals("CONFERENCE_LEAGUE")) continue;
-            JSONObject standings = null;
-            try { standings = readObject("competitions/" + c.getInt("id") + "/standings"); } catch (Exception ignored) { }
-            JSONArray rows = standings == null ? null : standings.optJSONArray("standings");
-            if (rows != null) for (int i = 0; i < rows.length(); i++) {
-                JSONObject team = rows.getJSONObject(i).optJSONObject("team");
-                if (team != null && team.optInt("id") > 0) teams.put(team.optInt("id"), team);
-            }
-            if (rows != null && rows.length() > 0) continue;
-            // Cups often have no table: collect the teams from the cup's matches instead.
-            for (int page = 1; page <= 6; page++) {
-                JSONObject matches = readObject("matches?competitionId=" + c.getInt("id")
-                        + "&season=" + URLEncoder.encode(season, "UTF-8") + "&pageSize=100&page=" + page);
-                JSONArray data = matches.optJSONArray("data");
-                if (data == null || data.length() == 0) break;
-                for (int i = 0; i < data.length(); i++) for (String side : new String[]{"home", "away"}) {
-                    JSONObject team = data.getJSONObject(i).optJSONObject(side);
-                    if (team != null && team.optInt("id") > 0) teams.put(team.optInt("id"), team);
-                }
-                JSONObject meta = matches.optJSONObject("meta");
-                if (meta == null || page >= meta.optInt("pageCount", page)) break;
-            }
-        }
-        return new ArrayList<>(teams.values());
     }
 
     private static void add(HashMap<Integer, Team> teams, JSONObject item) {

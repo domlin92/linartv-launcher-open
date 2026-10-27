@@ -34,12 +34,22 @@ final class CrestNameMatcher {
         EXCEPTIONS.put("Racing de Santander", "racing");
         EXCEPTIONS.put("Athletic de Bilbao", "athletic-club");
         EXCEPTIONS.put("RC Strasbourg", "rc-strasbourg-alsace");
+        // The file "deportivo" is Deportivo Alavés; La Coruña has its own file.
+        EXCEPTIONS.put("RC Deportivo", "deportivo-la-coruna");
+        EXCEPTIONS.put("RC Deportivo La Coruña", "deportivo-la-coruna");
     }
 
     private CrestNameMatcher() { }
 
     /** Index of the best file name for the club, or -1 when none fits or two fit equally. */
-    static int best(String club, List<String> fileNames) {
+    static int best(String club, List<String> fileNames) { return best(club, fileNames, null); }
+
+    /**
+     * Like {@link #best(String, List)}, also matching each crest's display name
+     * ({@code displayNames}, same order, e.g. "Deportivo Alavés" for the file "deportivo");
+     * the better of the two scores counts.
+     */
+    static int best(String club, List<String> fileNames, List<String> displayNames) {
         String exception = EXCEPTIONS.get(club);
         if (exception != null) return fileNames.indexOf(exception);
         List<String> team = words(club);
@@ -47,13 +57,39 @@ final class CrestNameMatcher {
         int[] bestScore = null;
         boolean tie = false;
         for (int i = 0; i < fileNames.size(); i++) {
-            int[] score = score(team, words(fileNames.get(i).replace('-', ' ')), fileNames.get(i).length());
+            int length = fileNames.get(i).length();
+            int[] score = score(team, words(fileNames.get(i).replace('-', ' ')), length);
+            if (displayNames != null && displayNames.get(i) != null) {
+                int[] byName = score(team, words(displayNames.get(i)), length);
+                if (byName != null && (score == null || compare(byName, score) > 0)) score = byName;
+            }
             if (score == null) continue;
             int compare = bestScore == null ? 1 : compare(score, bestScore);
             if (compare > 0) { bestIndex = i; bestScore = score; tie = false; }
             else if (compare == 0) tie = true;
         }
         return tie ? -1 : bestIndex;
+    }
+
+    /**
+     * Strength of a match found by {@link #best(String, List, List)}, for comparing results
+     * between country lists (larger is better); null when the crest does not fit.
+     */
+    static int[] strength(String club, String fileName, String displayName) {
+        if (fileName.equals(EXCEPTIONS.get(club))) return new int[]{Integer.MAX_VALUE};
+        List<String> team = words(club);
+        int[] score = score(team, words(fileName.replace('-', ' ')), fileName.length());
+        if (displayName != null) {
+            int[] byName = score(team, words(displayName), fileName.length());
+            if (byName != null && (score == null || compare(byName, score) > 0)) score = byName;
+        }
+        return score;
+    }
+
+    /** Compares two {@link #strength} results; a missing one is weaker. */
+    static int compareStrength(int[] a, int[] b) {
+        if (a == null || b == null) return a == null ? (b == null ? 0 : -1) : 1;
+        return compare(a, b);
     }
 
     static List<String> words(String name) {
@@ -98,7 +134,7 @@ final class CrestNameMatcher {
     }
 
     private static int compare(int[] a, int[] b) {
-        for (int i = 0; i < a.length; i++) if (a[i] != b[i]) return Integer.compare(a[i], b[i]);
-        return 0;
+        for (int i = 0; i < Math.min(a.length, b.length); i++) if (a[i] != b[i]) return Integer.compare(a[i], b[i]);
+        return Integer.compare(a.length, b.length);
     }
 }

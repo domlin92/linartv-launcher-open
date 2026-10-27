@@ -552,12 +552,6 @@ public final class DashboardActivity extends Activity {
         place(view, x, y, width, 1);
     }
 
-    private void verticalLine(int x, int y, int height) {
-        View view = new View(this);
-        view.setBackgroundColor(outline);
-        place(view, x, y, 1, height);
-    }
-
     private TextView action(String label, int x, int y, int w, int h, Runnable click) {
         TextView view = text(label, 19, ink, false, x, y, w, h);
         view.setGravity(Gravity.CENTER);

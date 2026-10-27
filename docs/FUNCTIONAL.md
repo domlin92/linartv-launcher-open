@@ -49,6 +49,7 @@ LinarTV można ustawić jako domyślny ekran główny (ustawienie TV albo `adb s
 | Terminarz klubu | kalendarzeligowe.pl — API (`/api/matches?teamId=`) | raz dziennie | w pamięci TV (SharedPreferences) |
 | Kluby zagraniczne (Top 5) | fixtur.es — kanał iCal klubu `ics.fixtur.es/v2/{klub}.ics` (liga, krajowe i europejskie puchary); lista klubów wbudowana w aplikację | najwyżej co 6 godzin, z If-Modified-Since | podpis „Dane dostarcza: fixtur.es” na karcie meczu (warunek fixtur.es) |
 | Herby | kalendarzeligowe.pl (`/api/teams/{id}/logo`) | ponownie tylko po zmianie wersji herbu (`crestVer`) | bez herbu pokazywane są inicjały; zob. [CRESTS.md](CRESTS.md) |
+| Herby klubów zagranicznych | football-logos.cc (strony krajów, obrazki 256 px) | raz na klub, zapis w pamięci TV | tylko gdy kalendarzeligowe.pl nie ma herbu; dopasowanie po nazwie (`CrestNameMatcher`) |
 | Prognoza i warunki teraz | Open-Meteo (`api.open-meteo.com/v1/forecast`, kody pogody WMO) | co 30 minut | CC BY 4.0, podpis „Open-Meteo.com” w szczegółach pogody |
 | Ikony pogody | Meteocons (Bas Milius, MIT) — SVG wbudowane w APK (`assets/meteocons`) | zawsze | bez pobierania; działają bez sieci |
 | Wyszukiwanie miasta | Open-Meteo Geocoding (GeoNames, CC BY 4.0), cały świat | przy wyborze miasta | wysyłana jest tylko wpisana nazwa |
@@ -200,6 +201,7 @@ Below the tiles: free RAM and storage, a shortcut to Android TV settings, Langua
 | Club fixtures | kalendarzeligowe.pl API (`/api/matches?teamId=`) | once a day | stored on the TV (SharedPreferences) |
 | Foreign clubs (Top 5) | fixtur.es — the club's iCal feed `ics.fixtur.es/v2/{club}.ics` (league, domestic and European cups); club list bundled in the app | at most every 6 hours, with If-Modified-Since | credit "Data provided by: fixtur.es" on the match card (fixtur.es condition) |
 | Crests | kalendarzeligowe.pl (`/api/teams/{id}/logo`) | again only when the crest version (`crestVer`) changes | initials when no image exists; see [CRESTS.md](CRESTS.md) |
+| Foreign club crests | football-logos.cc (country pages, 256 px images) | once per club, cached on the TV | only when kalendarzeligowe.pl has no crest; matched by name (`CrestNameMatcher`) |
 | Forecast and current conditions | Open-Meteo (`api.open-meteo.com/v1/forecast`, WMO weather codes) | every 30 minutes | CC BY 4.0, attribution "Open-Meteo.com" in weather details |
 | Weather icons | Meteocons (Bas Milius, MIT) — SVG bundled in the APK (`assets/meteocons`) | always | no download; work offline |
 | City search | Open-Meteo Geocoding (GeoNames, CC BY 4.0), worldwide | when choosing a city | only the typed name is sent |

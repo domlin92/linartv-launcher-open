@@ -163,11 +163,17 @@ final class FixturesClient {
         } catch (Exception ignored) { }
     }
 
-    /** Cached feed: fetched at most every 6 hours, with If-Modified-Since. */
+    /**
+     * Cached feed: fetched at most every 6 hours, with If-Modified-Since. The body (often
+     * 200+ kB) lives in a cache file; only the timestamps sit in SharedPreferences.
+     */
     private static String feed(String feedUrl) throws Exception {
         SharedPreferences prefs = app.getSharedPreferences("fixtures_feeds", Context.MODE_PRIVATE);
         String key = Integer.toHexString(feedUrl.hashCode());
-        String cached = prefs.getString("body_" + key, null);
+        java.io.File file = new java.io.File(app.getCacheDir(), "fixtures-" + key + ".ics");
+        String cached = file.isFile()
+                ? new String(java.nio.file.Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8)
+                : prefs.getString("body_" + key, null); // feeds cached by builds before the file cache
         long fetchedAt = prefs.getLong("at_" + key, 0), now = System.currentTimeMillis();
         if (cached != null && now - fetchedAt < MIN_FETCH_INTERVAL_MS) return cached;
         HttpURLConnection connection = (HttpURLConnection) new URL(feedUrl).openConnection();
@@ -177,7 +183,10 @@ final class FixturesClient {
         String lastModified = prefs.getString("lm_" + key, null);
         if (cached != null && lastModified != null) connection.setRequestProperty("If-Modified-Since", lastModified);
         try {
-            int code = connection.getResponseCode();
+            int code;
+            try { code = connection.getResponseCode(); }
+            catch (Exception offline) { if (cached != null) return cached; throw offline; } // keep the last feed
+            if (code != 200 && code != HttpURLConnection.HTTP_NOT_MODIFIED && cached != null) return cached;
             if (code == HttpURLConnection.HTTP_NOT_MODIFIED && cached != null) {
                 prefs.edit().putLong("at_" + key, now).apply();
                 return cached;
@@ -185,7 +194,8 @@ final class FixturesClient {
             if (code != 200) throw new IllegalStateException("fixtur.es HTTP " + code);
             String body;
             try (InputStream in = connection.getInputStream()) { body = new String(readAll(in, 3_000_000), StandardCharsets.UTF_8); }
-            prefs.edit().putString("body_" + key, body).putLong("at_" + key, now)
+            java.nio.file.Files.write(file.toPath(), body.getBytes(StandardCharsets.UTF_8));
+            prefs.edit().remove("body_" + key).putLong("at_" + key, now)
                     .putString("lm_" + key, connection.getHeaderField("Last-Modified")).apply();
             return body;
         } finally { connection.disconnect(); }
@@ -206,11 +216,13 @@ final class FixturesClient {
     // as the site asks). Images are downloaded once on the TV and cached; none are in the
     // repository or the APK. A club or the site can ask for removal - see docs/CRESTS.md.
     private static final Map<String, String> LOGOS = new java.util.concurrent.ConcurrentHashMap<>();
-    /** Per country page: crest file names and their image URLs. */
+    /** Per country page: crest file names, display names ("Deportivo Alavés") and image URLs. */
     private static final Map<String, List<String>> LOGO_NAMES = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<String, List<String>> LOGO_TITLES = new java.util.concurrent.ConcurrentHashMap<>();
     private static final Map<String, List<String>> LOGO_URLS = new java.util.concurrent.ConcurrentHashMap<>();
+    /** A crest tile: the 256 px image and its alt text, e.g. alt="Deportivo Alavés logo". */
     private static final Pattern LOGO = Pattern.compile(
-            "https://assets\\.football-logos\\.cc/logos/([a-z-]+)/256x256/([a-z0-9-]+)\\.[0-9a-f]+\\.png");
+            "<img src=\"(https://assets\\.football-logos\\.cc/logos/([a-z-]+)/256x256/([a-z0-9-]+)\\.[0-9a-f]+\\.png)\"[^>]*?alt=\"([^\"]*)\"");
 
     /**
      * Crest image URL for a club from any of the five countries (cup opponents included), or
@@ -220,39 +232,74 @@ final class FixturesClient {
         String cached = LOGOS.get(team);
         if (cached != null) return cached.isEmpty() ? null : cached;
         if (LOGO_NAMES.size() < COUNTRIES.size()) return null; // pages not read yet
+        // Best match in each country, then the strongest across countries ("Aston Villa" fits
+        // aston-villa in England better than villarreal in Spain); an exact tie gives no crest.
         String found = "";
+        int[] strongest = null;
+        boolean tie = false;
         for (Country c : COUNTRIES) {
-            List<String> names = LOGO_NAMES.get(c.logoPage);
+            List<String> names = LOGO_NAMES.get(c.logoPage), titles = LOGO_TITLES.get(c.logoPage);
             if (names == null) continue;
-            int index = CrestNameMatcher.best(team, names);
+            int index = CrestNameMatcher.best(team, names, titles);
             if (index < 0) continue;
-            if (!found.isEmpty()) { found = ""; break; }
-            found = LOGO_URLS.get(c.logoPage).get(index);
+            int[] strength = CrestNameMatcher.strength(team, names.get(index), titles == null ? null : titles.get(index));
+            int compare = CrestNameMatcher.compareStrength(strength, strongest);
+            if (compare > 0) { strongest = strength; found = LOGO_URLS.get(c.logoPage).get(index); tie = false; }
+            else if (compare == 0) tie = true;
         }
+        if (tie) found = "";
         LOGOS.put(team, found);
         return found.isEmpty() ? null : found;
     }
 
-    /** Reads the five country pages once per app run (network; call off the main thread). */
+    private static final long LOGO_PAGES_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000;
+
+    /**
+     * The five country crest lists (network; call off the main thread). Each page is about
+     * 1 MB, so the parsed list is kept in a small file and the page is read again after 7 days.
+     */
     static synchronized void loadLogoPages() {
         if (LOGO_NAMES.size() == COUNTRIES.size()) return;
         for (Country country : COUNTRIES) {
             if (LOGO_NAMES.containsKey(country.logoPage)) continue;
+            java.io.File saved = new java.io.File(app.getFilesDir(), "football-logos-" + country.logoPage + ".json");
+            if (saved.isFile() && System.currentTimeMillis() - saved.lastModified() < LOGO_PAGES_MAX_AGE_MS) {
+                try {
+                    JSONObject json = new JSONObject(new String(java.nio.file.Files.readAllBytes(saved.toPath()), StandardCharsets.UTF_8));
+                    LOGO_URLS.put(country.logoPage, strings(json.getJSONArray("urls")));
+                    LOGO_TITLES.put(country.logoPage, strings(json.getJSONArray("titles")));
+                    LOGO_NAMES.put(country.logoPage, strings(json.getJSONArray("names")));
+                    continue;
+                } catch (Exception unreadable) { saved.delete(); }
+            }
             try {
                 String page = readUrl("https://football-logos.cc/" + country.logoPage + "/");
-                List<String> names = new ArrayList<>(), urls = new ArrayList<>();
+                List<String> names = new ArrayList<>(), titles = new ArrayList<>(), urls = new ArrayList<>();
                 Matcher m = LOGO.matcher(page);
                 while (m.find()) {
-                    if (!m.group(1).equals(country.logoPage) || names.contains(m.group(2))) continue;
-                    names.add(m.group(2)); urls.add(m.group());
+                    String file = m.group(3);
+                    // Skip variants such as "aston-villa--black-monochrome" and repeats.
+                    if (!m.group(2).equals(country.logoPage) || file.contains("--") || names.contains(file)) continue;
+                    String title = android.text.Html.fromHtml(m.group(4)).toString().replaceFirst("(?i)\\s+logo$", "").trim();
+                    names.add(file); titles.add(title); urls.add(m.group(1));
                 }
                 LOGO_URLS.put(country.logoPage, urls);
+                LOGO_TITLES.put(country.logoPage, titles);
                 LOGO_NAMES.put(country.logoPage, names);
+                JSONObject json = new JSONObject().put("names", new JSONArray(names))
+                        .put("titles", new JSONArray(titles)).put("urls", new JSONArray(urls));
+                java.nio.file.Files.write(saved.toPath(), json.toString().getBytes(StandardCharsets.UTF_8));
             } catch (Exception unavailable) {
                 android.util.Log.w("LinarTV", "Foreign crests unavailable: " + country.logoPage, unavailable);
             }
         }
         LOGOS.clear();
+    }
+
+    private static List<String> strings(JSONArray array) throws Exception {
+        List<String> list = new ArrayList<>();
+        for (int i = 0; i < array.length(); i++) list.add(array.getString(i));
+        return list;
     }
 
     private static String readUrl(String address) throws Exception {
