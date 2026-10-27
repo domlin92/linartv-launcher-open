@@ -777,14 +777,14 @@ public final class DashboardActivity extends Activity {
         about.setOnClickListener(v -> showMessageDialog("LinarTV " + appVersion(),
                 tr("Launcher dla Android TV\n\n"
                         + "Terminarze polskich klubów: kalendarzeligowe.pl\n"
-                        + "Terminarze klubów zagranicznych: fixtur.es\n"
-                        + "Herby klubów zagranicznych: football-logos.cc\n"
+                        + "Terminarze pozostałych klubów: fixtur.es\n"
+                        + "Herby pozostałych klubów: football-logos.cc\n"
                         + "Pogoda: Open-Meteo.com (CC BY 4.0) · ikony Meteocons (MIT)\n\n"
                         + "Herby należą do klubów. Na prośbę klubu lub źródła usuniemy herb.",
                    "Launcher for Android TV\n\n"
                         + "Polish club fixtures: kalendarzeligowe.pl\n"
-                        + "Foreign club fixtures: fixtur.es\n"
-                        + "Foreign club crests: football-logos.cc\n"
+                        + "Other club fixtures: fixtur.es\n"
+                        + "Other club crests: football-logos.cc\n"
                         + "Weather: Open-Meteo.com (CC BY 4.0) · Meteocons icons (MIT)\n\n"
                         + "Crests belong to their clubs. We remove a crest on request of the club or the source.")));
         footer.addView(language, new LinearLayout.LayoutParams(0, px(46), 1));
