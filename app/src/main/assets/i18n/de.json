@@ -9,7 +9,7 @@
   "Choose a club for the match calendar": "Verein für den Spielkalender auswählen",
   "Close apps": "Apps schließen",
   "Close background apps": "Hintergrund-Apps schließen",
-  "Wallpapers": "Hintergründe",
+  "Wallpapers": "Hintergrundbilder",
   "Screensaver": "Bildschirmschoner",
   "Launcher appearance": "Darstellung",
   "Weather": "Wetter",
@@ -152,7 +152,7 @@
   "Enter the code below on your phone. If scanning fails, enter this address:": "Gib den folgenden Code auf dem Smartphone ein. Falls das Scannen nicht klappt, gib diese Adresse ein:",
   "Code: ": "Code: ",
   "Select photos on your phone and tap Add photos.": "Wähle Fotos auf dem Smartphone aus und tippe auf Fotos hinzufügen.",
-  "Choose a photo to set it as your background.": "Wähle ein Foto als Hintergrund aus.",
+  "Choose a photo to set it as your background.": "Wähle ein Foto als Hintergrundbild aus.",
   "Delete photo": "Foto löschen",
   "Add from phone": "Vom Smartphone hinzufügen",
   "Delete this photo?": "Dieses Foto löschen?",
@@ -203,5 +203,14 @@
   "Uploading…": "Wird übertragen…",
   "File too large: ": "Datei zu groß: ",
   "Could not upload ": "Übertragung fehlgeschlagen: ",
-  ". Check that the code window is still open on TV and try again.": ". Prüfe, ob das Codefenster auf dem Fernseher noch geöffnet ist, und versuche es erneut."
+  ". Check that the code window is still open on TV and try again.": ". Prüfe, ob das Codefenster auf dem Fernseher noch geöffnet ist, und versuche es erneut.",
+  "Search club by name…": "Verein nach Namen suchen…",
+  "Search club": "Verein suchen",
+  "Type part of the club name and choose a result.": "Gib einen Teil des Vereinsnamens ein und wähle ein Ergebnis.",
+  "E.g. Arsenal": "Z. B. Bayern",
+  "Enter at least two letters of the club name.": "Gib mindestens zwei Buchstaben des Vereinsnamens ein.",
+  "Searching for club…": "Verein wird gesucht…",
+  "Could not load the club list. Check your internet connection.": "Vereinsliste konnte nicht geladen werden. Prüfe deine Internetverbindung.",
+  "Club not found: ": "Verein nicht gefunden: ",
+  "Choose the club:": "Wähle den Verein:"
 }

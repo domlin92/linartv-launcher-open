@@ -203,5 +203,14 @@
   "Uploading…": "Subiendo…",
   "File too large: ": "Archivo demasiado grande: ",
   "Could not upload ": "No se pudo subir ",
-  ". Check that the code window is still open on TV and try again.": ". Comprueba que la ventana del código siga abierta en el televisor e inténtalo de nuevo."
+  ". Check that the code window is still open on TV and try again.": ". Comprueba que la ventana del código siga abierta en el televisor e inténtalo de nuevo.",
+  "Search club by name…": "Buscar equipo por nombre…",
+  "Search club": "Buscar equipo",
+  "Type part of the club name and choose a result.": "Escribe parte del nombre del equipo y elige un resultado.",
+  "E.g. Arsenal": "P. ej., Betis",
+  "Enter at least two letters of the club name.": "Introduce al menos dos letras del nombre del equipo.",
+  "Searching for club…": "Buscando equipo…",
+  "Could not load the club list. Check your internet connection.": "No se pudo cargar la lista de equipos. Comprueba tu conexión a Internet.",
+  "Club not found: ": "Equipo no encontrado: ",
+  "Choose the club:": "Elige el equipo:"
 }

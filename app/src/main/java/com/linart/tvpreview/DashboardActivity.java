@@ -78,8 +78,8 @@ public final class DashboardActivity extends Activity {
     /** Card height; 12 units taller than before so the data provider fits under the crests. */
     private static final int CARD_H = 298;
     /** Match title styles under comparison. */
-    private static final int TITLE_LINE = 0, TITLE_VS = 1;
-    private static final int MATCH_TITLE_STYLE = TITLE_VS;
+    private static final int TITLE_LINE = 0, TITLE_VS = 1, TITLE_DASH = 3;
+    private static final int MATCH_TITLE_STYLE = TITLE_DASH;
     /** Crest box on match cards; leaves room for the data provider line below. */
     private static final int CREST_SIZE = 118;
     private static final int SINGLE_COLUMN_X = 1114;
@@ -655,6 +655,7 @@ public final class DashboardActivity extends Activity {
 
         root = new FrameLayout(this);
         root.setBackgroundColor(0xFF0B1F3B);
+        watchFit(root);
         setContentView(root);
         ImageView wallpaper = new ImageView(this);
         showSavedWallpaper(wallpaper);
@@ -794,6 +795,8 @@ public final class DashboardActivity extends Activity {
                         + "Other club crests: football-logos.cc\n"
                         + "Weather: Open-Meteo.com (CC BY 4.0) · Meteocons icons (MIT)\n\n"
                         + "Crests belong to their clubs. We remove a crest on request of the club or the source.")));
+        // Short footer buttons: one line, the text shrinks for long words ("Informazioni").
+        for (TextView b : new TextView[]{language, about}) fitOneLine(b);
         footer.addView(language, new LinearLayout.LayoutParams(0, px(46), 1));
         LinearLayout.LayoutParams aboutParams = new LinearLayout.LayoutParams(0, px(46), 1);
         aboutParams.leftMargin = px(12);
@@ -805,6 +808,7 @@ public final class DashboardActivity extends Activity {
         spotifyParams.leftMargin = px(12);
         footer.addView(spotifyAccess, spotifyParams);
         addSettingsControl(content, footer, 46);
+        watchFit(content);
         dialog.setContentView(content, new ViewGroup.LayoutParams(-1, -1));
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         dialog.getWindow().getDecorView().setPadding(0, 0, 0, 0);
@@ -922,7 +926,9 @@ public final class DashboardActivity extends Activity {
         name.setText(label);
         name.setTextColor(muted);
         name.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(16));
-        row.addView(name, new LinearLayout.LayoutParams(px(70), -2));
+        name.setSingleLine(true);
+        // Wide enough for "Almacenamiento"; both meters start at the same place.
+        row.addView(name, new LinearLayout.LayoutParams(px(128), -2));
         android.widget.ProgressBar meter = new android.widget.ProgressBar(this, null,
                 android.R.attr.progressBarStyleHorizontal);
         meter.setProgress(total > 0 ? (int) ((total - free) * 100 / total) : 0);
@@ -1041,6 +1047,7 @@ public final class DashboardActivity extends Activity {
             onSave.accept(minute);
         });
         addSettingsControl(content, save, 54);
+        watchFit(content);
         dialog.setContentView(content);
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog);
@@ -1079,6 +1086,7 @@ public final class DashboardActivity extends Activity {
             onSave.accept(value);
         });
         addSettingsControl(content, save, 54);
+        watchFit(content);
         dialog.setContentView(content);
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog);
@@ -1185,11 +1193,13 @@ public final class DashboardActivity extends Activity {
         searchParams.leftMargin = px(14);
         actions.addView(search, searchParams);
         content.addView(actions);
+        focusDownTo(query, search, results);
         search.setOnClickListener(v -> searchCity(query.getText().toString().trim(), dialog, results, status));
         query.setOnEditorActionListener((v, actionId, event) -> {
             search.performClick();
             return true;
         });
+        watchFit(content);
         dialog.setContentView(content);
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog);
@@ -1321,6 +1331,7 @@ public final class DashboardActivity extends Activity {
         LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(px(150), px(54));
         closeParams.gravity = Gravity.END;
         content.addView(close, closeParams);
+        watchFit(content);
         dialog.setContentView(content);
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog);
@@ -1340,6 +1351,7 @@ public final class DashboardActivity extends Activity {
         LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(px(150), px(54));
         closeParams.gravity = Gravity.END;
         content.addView(close, closeParams);
+        watchFit(content);
         dialog.setContentView(content);
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog);
@@ -1362,6 +1374,64 @@ public final class DashboardActivity extends Activity {
         weatherSettingsRefreshPending = true;
         applyVisualSettingsNow();
         refreshWeather();
+    }
+
+    /**
+     * Arrow down from {@code from} lands on the dialog's main button (Search, Save), not on
+     * the nearest one below (Close, Remove second club). Results added later keep working:
+     * once they exist, "down" goes to them first.
+     */
+    private void focusDownTo(View from, View main) { focusDownTo(from, main, null); }
+
+    private void focusDownTo(View from, View main, android.view.ViewGroup results) {
+        from.setOnKeyListener((v, keyCode, event) -> {
+            if (keyCode != android.view.KeyEvent.KEYCODE_DPAD_DOWN || event.getAction() != android.view.KeyEvent.ACTION_DOWN)
+                return false;
+            // Results already shown: "down" goes to the first one.
+            if (results != null && results.getChildCount() > 0) { results.getChildAt(0).requestFocus(); return true; }
+            main.requestFocus();
+            return true;
+        });
+    }
+
+    /** One line, centred, smaller side padding, text shrinks (down to 14 px) instead of wrapping. */
+    private void fitOneLine(TextView button) {
+        button.setPadding(px(8), 0, px(8), 0);
+        button.setMaxLines(1);
+        button.setAutoSizeTextTypeUniformWithConfiguration(px(14), px(21), 1, TypedValue.COMPLEX_UNIT_PX);
+    }
+
+    /**
+     * Debug builds only: logs text that does not fit its box (wrapped past its height or cut
+     * with "…"), tagged "LinarTV-fit". Used to check translations on the emulator.
+     */
+    private void watchFit(View root) {
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0) return;
+        Runnable check = () -> logTextOverflow(root);
+        root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            root.removeCallbacks(check);
+            root.postDelayed(check, 800);
+        });
+    }
+
+    private void logTextOverflow(View view) {
+        if (!(view instanceof TextView)) {
+            if (view instanceof android.view.ViewGroup) {
+                android.view.ViewGroup group = (android.view.ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) logTextOverflow(group.getChildAt(i));
+            }
+            return;
+        }
+        TextView text = (TextView) view;
+        android.text.Layout layout = text.getLayout();
+        if (layout == null || text.getVisibility() != View.VISIBLE || text.getText().length() == 0) return;
+        int lines = layout.getLineCount();
+        boolean cut = lines > 0 && layout.getEllipsisCount(lines - 1) > 0;
+        boolean tooTall = layout.getHeight() > text.getHeight() - text.getPaddingTop() - text.getPaddingBottom() + 2;
+        boolean tooWide = lines == 1 && layout.getLineWidth(0) > text.getWidth() - text.getPaddingLeft() - text.getPaddingRight() + 2;
+        if (cut || tooTall || tooWide)
+            android.util.Log.w("LinarTV-fit", translations.code() + " | " + (cut ? "cut " : "") + (tooTall ? "tall " : "")
+                    + (tooWide ? "wide " : "") + "| " + text.getText().toString().replace('\n', ' '));
     }
 
     private TextView setupButton(String label) {
@@ -1433,7 +1503,11 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             draft[1] = new CalendarFeed("club2", "", "", "", "");
             second.setText(tr("2. Dodaj drugi klub (opcjonalnie)", "2. Add a second club (optional)"));
         });
-        actions.addView(remove, new LinearLayout.LayoutParams(px(260), px(54)));
+        // Grows with the label ("Rimuovi la seconda squadra"), at least as wide as before.
+        remove.setPadding(px(24), 0, px(24), 0);
+        remove.setSingleLine(true);
+        remove.setMinWidth(px(260));
+        actions.addView(remove, new LinearLayout.LayoutParams(-2, px(54)));
         TextView save = setupButton(tr("Zapisz", "Save"));
         save.setGravity(Gravity.CENTER);
         save.setPadding(0, 0, 0, 0);
@@ -1452,6 +1526,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             }
         });
         content.addView(actions);
+        focusDownTo(second, save);
+        watchFit(content);
         dialog.setContentView(content);
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog);
@@ -1466,16 +1542,120 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         List<FixturesClient.Country> foreign = new ArrayList<>(FixturesClient.COUNTRIES);
         java.text.Collator collator = java.text.Collator.getInstance(displayLocale());
         foreign.sort((a, b) -> collator.compare(tr(a.namePl, a.nameEn), tr(b.namePl, b.nameEn)));
-        String[] countries = new String[foreign.size() + 1];
-        countries[0] = tr("Polska", "Poland");
+        // First entry: search by club name instead of country → league → club.
+        String[] countries = new String[foreign.size() + 2];
+        countries[0] = tr("Szukaj klubu po nazwie…", "Search club by name…");
+        countries[1] = tr("Polska", "Poland");
         for (int i = 0; i < foreign.size(); i++)
-            countries[i + 1] = tr(foreign.get(i).namePl, foreign.get(i).nameEn);
+            countries[i + 2] = tr(foreign.get(i).namePl, foreign.get(i).nameEn);
         showChoiceDialog(tr("Wybierz kraj", "Choose a country"), countries, index -> {
-            if (index == 0) { choosePolishLeague(slot, draft, button, setup, status); return; }
-            FixturesClient.Country country = foreign.get(index - 1);
+            if (index == 0) { showClubSearch(slot, draft, button, setup, status); return; }
+            if (index == 1) { choosePolishLeague(slot, draft, button, setup, status); return; }
+            FixturesClient.Country country = foreign.get(index - 2);
             showChoiceDialog(countries[index], new String[]{country.league},
                     league -> chooseForeignClub(slot, country, draft, button, setup, status));
         });
+    }
+
+    /** "Search club by name": type part of the name, choose from clubs of all leagues. */
+    private void showClubSearch(int slot, CalendarFeed[] draft, TextView button, Dialog setup, TextView wizardStatus) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout content = popupContent();
+        popupTitle(content, tr("Szukaj klubu", "Search club"));
+        popupDescription(content, tr("Wpisz część nazwy klubu i wybierz wynik.",
+                "Type part of the club name and choose a result."));
+        EditText query = new EditText(this);
+        query.setSingleLine(true);
+        query.setTextColor(ink);
+        query.setHintTextColor(muted);
+        query.setHint(tr("Np. Cracovia", "E.g. Arsenal"));
+        query.setPadding(px(20), 0, px(20), 0);
+        query.setBackground(shape(night ? 0xFF2B4268 : 0xFFE3E9F0,
+                night ? 0xFF7899C3 : 0xFFB7C4D5, 15));
+        content.addView(query, new LinearLayout.LayoutParams(-1, px(66)));
+        TextView status = popupDescription(content, "");
+        LinearLayout results = new LinearLayout(this);
+        results.setOrientation(LinearLayout.VERTICAL);
+        ScrollView resultScroll = new ScrollView(this);
+        resultScroll.addView(results);
+        LinearLayout.LayoutParams resultParams = new LinearLayout.LayoutParams(-1, px(300));
+        resultParams.topMargin = px(8);
+        content.addView(resultScroll, resultParams);
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.END);
+        TextView close = setupButton(tr("Zamknij", "Close"));
+        close.setGravity(Gravity.CENTER);
+        close.setOnClickListener(v -> dialog.dismiss());
+        actions.addView(close, new LinearLayout.LayoutParams(px(150), px(58)));
+        TextView search = setupButton(tr("Szukaj", "Search"));
+        search.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(px(150), px(58));
+        searchParams.leftMargin = px(14);
+        actions.addView(search, searchParams);
+        content.addView(actions);
+        focusDownTo(query, search, results);
+        search.setOnClickListener(v -> {
+            String name = query.getText().toString().trim();
+            if (CrestNameIndex.normalize(name).length() < 2) {
+                status.setText(tr("Wpisz co najmniej dwie litery nazwy klubu.",
+                        "Enter at least two letters of the club name."));
+                return;
+            }
+            status.setText(tr("Szukanie klubu…", "Searching for club…"));
+            results.removeAllViews();
+            new Thread(() -> {
+                List<ClubDirectory.Club> found;
+                try { found = ClubDirectory.search(ClubDirectory.all(this), name, 30); }
+                catch (Exception e) {
+                    android.util.Log.w("LinarTV", "Club search failed", e);
+                    found = null;
+                }
+                final List<ClubDirectory.Club> clubs = found;
+                handler.post(() -> {
+                    if (isFinishing() || isDestroyed() || !dialog.isShowing()) return;
+                    if (clubs == null) {
+                        status.setText(tr("Nie udało się pobrać listy klubów. Sprawdź połączenie z internetem.",
+                                "Could not load the club list. Check your internet connection."));
+                        return;
+                    }
+                    if (clubs.isEmpty()) {
+                        status.setText(tr("Nie znaleziono klubu: ", "Club not found: ") + name);
+                        return;
+                    }
+                    status.setText(tr("Wybierz klub:", "Choose the club:"));
+                    for (ClubDirectory.Club club : clubs) {
+                        TextView item = setupButton(club.name + " · " + club.league);
+                        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, px(62));
+                        params.bottomMargin = px(8);
+                        results.addView(item, params);
+                        item.setOnClickListener(v2 -> {
+                            int other = 1 - slot;
+                            if (draft[other].configured() && draft[other].url.equals(club.url)) {
+                                status.setText(tr("Ten klub jest już wybrany.", "This club is already selected."));
+                                return;
+                            }
+                            draft[slot] = new CalendarFeed("club" + (slot + 1), club.url, club.name,
+                                    club.league, club.leagueSlug);
+                            button.setText((slot + 1) + ". " + club.name + " · " + club.league);
+                            dialog.dismiss();
+                            button.requestFocusFromTouch();
+                        });
+                    }
+                    results.getChildAt(0).requestFocus();
+                });
+            }, "club-search").start();
+        });
+        query.setOnEditorActionListener((v, actionId, event) -> {
+            search.performClick();
+            return true;
+        });
+        watchFit(content);
+        dialog.setContentView(content);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        showDialogWithBlur(dialog);
+        dialog.getWindow().setLayout(px(780), -2);
+        query.requestFocus();
     }
 
     private void chooseForeignClub(int slot, FixturesClient.Country country, CalendarFeed[] draft,
@@ -1866,7 +2046,21 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         TextView teams = text(title, 29, color, true, x + 29, y + 68, 405, 80);
         teams.setSingleLine(false);
         teams.setMaxLines(2);
-        if (match != null) {
+        if (match != null && MATCH_TITLE_STYLE == TITLE_DASH) {
+            // As in Private: "Host – Guest". If it does not fit in one line, it breaks after the
+            // dash; a club name itself never breaks - the font shrinks until each part fits.
+            android.text.TextPaint paint = new android.text.TextPaint(teams.getPaint());
+            String hostPart = shortName(match.home) + " –", guestPart = shortName(match.away);
+            int size = 29;
+            boolean oneLine = false;
+            for (; size > 16; size--) {
+                paint.setTextSize(px(size));
+                if (paint.measureText(hostPart + " " + guestPart) <= px(405)) { oneLine = true; break; }
+                if (paint.measureText(hostPart) <= px(405) && paint.measureText(guestPart) <= px(405)) break;
+            }
+            teams.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(size));
+            teams.setText(oneLine ? hostPart + " " + guestPart : hostPart + "\n" + guestPart);
+        } else if (match != null) {
             // Host on the first line, guest on the second (no dash). Both share one font size,
             // shrunk until the longer line fits. Between them: a thin line, or a handwritten
             // "vs" in front of the guest (TITLE_VS, Android's built-in "cursive" font).
@@ -1893,9 +2087,10 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                     v.setIncludeFontPadding(false);
                     v.setLineSpacing(0, 0.95f);
                 }
-                homeView.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-                awayView.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-                awayView.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+                // Both names lean on the "vs." in the middle: host right-aligned, guest left-aligned.
+                homeView.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+                homeView.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+                awayView.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
                 TextView vsView = text("vs.", 17, (color & 0x00FFFFFF) | 0xB0000000, false,
                         x + 29 + col, bandY, gapX, bandH);
                 vsView.setIncludeFontPadding(false);
@@ -2374,12 +2569,16 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         closeParams.gravity = Gravity.END;
         closeParams.topMargin = px(8);
         content.addView(close, closeParams);
+        watchFit(content);
         dialog.setContentView(content);
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog);
         dialog.getWindow().setLayout(px(1080), -2);
         close.requestFocus();
     }
+
+    /** How many newer windows cover each open window (it shows again at 0). */
+    private final java.util.Map<View, Integer> hiddenBy = new java.util.HashMap<>();
 
     private void showDialogWithBlur(Dialog dialog) {
         showDialogWithBlur(dialog, null);
@@ -2390,16 +2589,26 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         popupDepth++;
         popupOpen = true;
         handler.removeCallbacks(startScreensaver);
-        Dialog parentDialog = visibleDialogs.isEmpty() ? null : visibleDialogs.get(visibleDialogs.size() - 1);
-        View parentContent = parentDialog != null && parentDialog.isShowing()
-                ? parentDialog.findViewById(android.R.id.content) : null;
-        final float parentAlpha = parentContent == null ? 1f : parentContent.getAlpha();
-        if (parentContent != null) parentContent.setAlpha(0f);
+        // Only the newest window is visible: every open one below it is hidden (not just the
+        // last), so e.g. the club wizard does not show under the search window.
+        // Counted per window: a menu that closes after its choice opened the next window must
+        // not bring back a window that the new one still covers.
+        List<View> hidden = new ArrayList<>();
+        for (Dialog open : visibleDialogs) {
+            View below = open.isShowing() ? open.findViewById(android.R.id.content) : null;
+            if (below == null) continue;
+            hidden.add(below);
+            hiddenBy.merge(below, 1, Integer::sum);
+            below.setAlpha(0f);
+        }
         boolean reusedBackdrop = popupBlurImage != null;
         ensurePopupBackdrop();
         dialog.setOnDismissListener(d -> {
             visibleDialogs.remove(dialog);
-            if (parentContent != null) parentContent.setAlpha(parentAlpha);
+            for (View below : hidden) {
+                int left = hiddenBy.merge(below, -1, Integer::sum);
+                if (left <= 0) { hiddenBy.remove(below); below.setAlpha(1f); }
+            }
             popupOpen = --popupDepth > 0;
             if (!popupOpen) releasePopupBackdrop();
             if (afterDismiss != null) afterDismiss.run();
@@ -3170,6 +3379,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             refreshDock(0);
         });
         content.addView(actions);
+        watchFit(content);
         dialog.setContentView(content);
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog);
@@ -3910,6 +4120,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(px(160), px(48));
         closeParams.gravity = Gravity.END;
         content.addView(close, closeParams);
+        watchFit(content);
         dialog.setContentView(content);
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog, () -> {
@@ -4082,6 +4293,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         closeWrap.addView(close, closeParams);
         footer.addView(closeWrap, new LinearLayout.LayoutParams(px(203), px(92)));
         content.addView(footer);
+        watchFit(content);
         dialog.setContentView(content);
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog);
@@ -4184,6 +4396,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             }
         });
         content.addView(actions);
+        watchFit(content);
         confirmation.setContentView(content);
         confirmation.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         confirmation.show();
@@ -4304,6 +4517,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             rows.addView(tile, tileParams);
             if (first == null) first = ((ViewGroup) tile).getChildAt(1);
         }
+        watchFit(content);
         dialog.setContentView(content, new ViewGroup.LayoutParams(-1, -1));
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         dialog.getWindow().getDecorView().setPadding(0, 0, 0, 0);

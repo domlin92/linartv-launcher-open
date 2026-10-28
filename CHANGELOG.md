@@ -5,6 +5,13 @@ Every release gets an entry here in Polish and English. Newest first.
 
 ## Niewydane / Unreleased
 
+- Wyszukiwanie klubu po nazwie w kreatorze (pierwsza pozycja na liście krajów): kluby polskie i zagraniczne naraz, bez wybierania kraju i ligi.
+- Search club by name in the club wizard (first entry in the country list): Polish and foreign clubs at once, without choosing a country and league.
+- Herby klubów zagranicznych ładują się szybciej przy pierwszym uruchomieniu (listy herbów pięciu krajów pobierane równolegle).
+- Foreign club crests load faster on first start (the five countries' crest lists download in parallel).
+- Przyciski i opisy mieszczą się także po niemiecku, hiszpańsku i włosku (np. „Informazioni”, „Almacenamiento”, „Rimuovi la seconda squadra”).
+- Buttons and labels also fit in German, Spanish and Italian (e.g. "Informazioni", "Almacenamiento", "Rimuovi la seconda squadra").
+
 - Interfejs niemiecki, hiszpański i włoski (DE/ES/IT): ustawienia, kreator klubów, pogoda, etapy rozgrywek oraz strona przesyłania zdjęć. Automatyczny wybór rozpoznaje pięć języków, daty i liczby są lokalizowane, a zmiana języka działa natychmiast.
 - German, Spanish and Italian interfaces (DE/ES/IT): settings, club setup, weather, competition stages and the phone upload page. Automatic selection recognises five languages; dates and numbers are localised and language changes apply immediately.
 
@@ -12,8 +19,8 @@ Every release gets an entry here in Polish and English. Newest first.
 - The app language follows the TV system by default: Polish system → Polish, any other → English. Settings → Language has a new "System" option; an earlier manual choice is kept.
 - Karty meczu i pogody mają na dole wąski pasek: z lewej „Dane dostarcza: **dostawca**”, z prawej czas odświeżenia. Karty są nieco wyższe.
 - Match and weather cards have a thin bottom strip: "Data provided by: **provider**" on the left, the update time on the right. Cards are slightly taller.
-- Tytuł meczu: gospodarz z lewej, gość z prawej, małe „vs.” pośrodku; długie nazwy zawijają się na dwie linie i zmniejszają, bez łamania słów. Inicjały w zastępczych herbach pomijają znaki typu „&”.
-- Match title: host left, guest right, a small "vs." in the middle; long names wrap onto two lines and shrink without breaking words. Initials in placeholder crests skip characters such as "&".
+- Tytuł meczu jak w Private: „Gospodarz – Gość”; gdy nie mieści się w jednej linii, gość przechodzi w całości do drugiej, a nazwa klubu nigdy nie jest łamana. Inicjały w zastępczych herbach pomijają znaki typu „&”.
+- Match title as in Private: "Host – Guest"; if it does not fit in one line, the guest moves to the second line as a whole and a club name never breaks. Initials in placeholder crests skip characters such as "&".
 - Herby klubów zagranicznych z [football-logos.cc](https://football-logos.cc), gdy kalendarzeligowe.pl nie ma herbu. Źródła danych i herbów są wymienione w oknie „O aplikacji”.
 - Foreign club crests from [football-logos.cc](https://football-logos.cc) when kalendarzeligowe.pl has none. Data and crest sources are listed in the About window.
 - Nazwy klubów w kolumnach (gospodarz z lewej, gość z prawej), gdy mecz nie mieści się w jednej linii; godziny meczów w strefie czasowej telewizora, także dla meczów bez ustalonej godziny.

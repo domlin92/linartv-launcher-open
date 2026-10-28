@@ -260,8 +260,21 @@ final class FixturesClient {
      */
     static synchronized void loadLogoPages() {
         if (LOGO_NAMES.size() == COUNTRIES.size()) return;
-        for (Country country : COUNTRIES) {
-            if (LOGO_NAMES.containsKey(country.logoPage)) continue;
+        // All countries at once: the first crest no longer waits for five pages read one by one.
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(COUNTRIES.size());
+        try {
+            List<java.util.concurrent.Future<?>> jobs = new ArrayList<>();
+            for (Country country : COUNTRIES) jobs.add(pool.submit(() -> loadLogoPage(country)));
+            for (java.util.concurrent.Future<?> job : jobs) {
+                try { job.get(); } catch (Exception ignored) { }
+            }
+        } finally { pool.shutdown(); }
+        LOGOS.clear();
+    }
+
+    private static void loadLogoPage(Country country) {
+        {
+            if (LOGO_NAMES.containsKey(country.logoPage)) return;
             java.io.File saved = new java.io.File(app.getFilesDir(), "football-logos-" + country.logoPage + ".json");
             if (saved.isFile() && System.currentTimeMillis() - saved.lastModified() < LOGO_PAGES_MAX_AGE_MS) {
                 try {
@@ -269,7 +282,7 @@ final class FixturesClient {
                     LOGO_URLS.put(country.logoPage, strings(json.getJSONArray("urls")));
                     LOGO_TITLES.put(country.logoPage, strings(json.getJSONArray("titles")));
                     LOGO_NAMES.put(country.logoPage, strings(json.getJSONArray("names")));
-                    continue;
+                    return;
                 } catch (Exception unreadable) { saved.delete(); }
             }
             try {
@@ -293,7 +306,6 @@ final class FixturesClient {
                 android.util.Log.w("LinarTV", "Foreign crests unavailable: " + country.logoPage, unavailable);
             }
         }
-        LOGOS.clear();
     }
 
     private static List<String> strings(JSONArray array) throws Exception {
