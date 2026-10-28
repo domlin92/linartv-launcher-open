@@ -5,6 +5,11 @@ Every release gets an entry here in Polish and English. Newest first.
 
 ## Niewydane / Unreleased
 
+- Aktualizacje z poziomu aplikacji: raz dziennie LinarTV sprawdza najnowsze wydanie na GitHubie. Gdy jest nowsze, w miejscu paska Spotify pojawia się „Dostępna aktualizacja” z przyciskami „Później” i „Aktualizuj”; „Aktualizuj” pobiera LinarTV.apk i otwiera systemowe okno instalacji. Po „Później” aktualizacja czeka w Ustawieniach (przycisk „Aktualizuj do LinarTV …” i zielona kropka). Ustawienia zostają.
+- In-app updates: once a day LinarTV checks the latest GitHub release. When it is newer, an "Update available" bar with "Later" and "Update" appears where the Spotify bar is; "Update" downloads LinarTV.apk and opens Android's install window. After "Later" the update waits in Settings ("Update to LinarTV …" button and a green dot). Settings are kept.
+- Wyszukiwanie głosowe: przycisk mikrofonu przy wyszukiwaniu klubu i miasta. Słucha w okienku („Słucham…”), w języku aplikacji, korzystając z rozpoznawania mowy telewizora; przy pierwszym użyciu Android pyta o dostęp do mikrofonu.
+- Voice search: a microphone button next to club and city search. It listens inside the window ("Listening…") in the app language, using the TV's speech recognition; Android asks for microphone access on first use.
+
 - Wyszukiwanie klubu po nazwie w kreatorze (pierwsza pozycja na liście krajów): kluby polskie i zagraniczne naraz, bez wybierania kraju i ligi.
 - Search club by name in the club wizard (first entry in the country list): Polish and foreign clubs at once, without choosing a country and league.
 - Herby klubów zagranicznych ładują się szybciej przy pierwszym uruchomieniu (listy herbów pięciu krajów pobierane równolegle).

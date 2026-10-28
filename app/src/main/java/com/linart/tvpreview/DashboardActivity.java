@@ -332,6 +332,7 @@ public final class DashboardActivity extends Activity {
             updateSpotifyBar();
         });
         spotify.start();
+        checkForUpdate(false);
         dashboardVisible = true;
         handler.removeCallbacks(updateTime);
         updateTime.run();
@@ -675,6 +676,7 @@ public final class DashboardActivity extends Activity {
         circleAction(R.drawable.ic_toolbar_sources, tr("Źródła", "Inputs"), 1438, this::showSources);
         circleAction(R.drawable.ic_toolbar_settings, tr("Ustawienia", "Settings"), 1538,
                 this::showPublicSettings);
+        renderUpdateBar();
 
         boolean singleColumn = !clubTwoCalendar.configured();
         renderWeatherCard(singleColumn ? SINGLE_COLUMN_X : 56);
@@ -772,6 +774,15 @@ public final class DashboardActivity extends Activity {
         addSystemMeter(content, "RAM", memory.availMem, memory.totalMem);
         android.os.StatFs storage = new android.os.StatFs(getFilesDir().getAbsolutePath());
         addSystemMeter(content, tr("Pamięć", "Storage"), storage.getAvailableBytes(), storage.getTotalBytes());
+        // A pending update stays reachable here after "Later" hid the bar.
+        if (pendingUpdate != null) {
+            AppUpdates.Release release = pendingUpdate;
+            TextView update = setupButton(tr("Aktualizuj do LinarTV ", "Update to LinarTV ") + release.version);
+            update.setGravity(Gravity.CENTER);
+            update.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            update.setOnClickListener(v -> downloadUpdate(release));
+            addSettingsControl(content, update, 50);
+        }
         TextView system = setupButton(tr("Ustawienia Android TV", "Android TV settings"));
         system.setGravity(Gravity.CENTER);
         system.setOnClickListener(v -> openSettings(Settings.ACTION_SETTINGS));
@@ -1172,7 +1183,7 @@ public final class DashboardActivity extends Activity {
         query.setPadding(px(20), 0, px(20), 0);
         query.setBackground(shape(night ? 0xFF2B4268 : 0xFFE3E9F0,
                 night ? 0xFF7899C3 : 0xFFB7C4D5, 15));
-        content.addView(query, new LinearLayout.LayoutParams(-1, px(66)));
+        int queryIndex = content.getChildCount();
         TextView status = popupDescription(content, "");
         LinearLayout results = new LinearLayout(this);
         results.setOrientation(LinearLayout.VERTICAL);
@@ -1193,6 +1204,7 @@ public final class DashboardActivity extends Activity {
         searchParams.leftMargin = px(14);
         actions.addView(search, searchParams);
         content.addView(actions);
+        addSearchField(content, queryIndex, query, search);
         focusDownTo(query, search, results);
         search.setOnClickListener(v -> searchCity(query.getText().toString().trim(), dialog, results, status));
         query.setOnEditorActionListener((v, actionId, event) -> {
@@ -1557,6 +1569,145 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         });
     }
 
+    private static final int REQUEST_VOICE = 41;
+    /** Receives what the user said (best guess first); set while the voice window is open. */
+    private java.util.function.Consumer<List<String>> voiceResult;
+
+    /**
+     * The search field with a microphone button on its right. The button uses the TV's own
+     * speech recognition (Google on Android TV) in the app's language; it is hidden when the
+     * TV has none. What was said goes into the field and starts the search.
+     */
+    private void addSearchField(LinearLayout content, int index, EditText query, TextView search) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(query, new LinearLayout.LayoutParams(0, px(66), 1));
+        Intent voice = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                        android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, translations.locale().toLanguageTag())
+                .putExtra(android.speech.RecognizerIntent.EXTRA_MAX_RESULTS, 5);
+        if (voice.resolveActivity(getPackageManager()) != null) {
+            TextView mic = setupButton("");
+            mic.setGravity(Gravity.CENTER);
+            mic.setPadding(0, 0, 0, 0);
+            mic.setContentDescription(tr("Wyszukiwanie głosowe", "Voice search"));
+            mic.setCompoundDrawablesWithIntrinsicBounds(new MicDrawable(ink, px(30)), null, null, null);
+            mic.setCompoundDrawablePadding(0);
+            mic.setPadding(px(17), 0, 0, 0);
+            java.util.function.Consumer<List<String>> onHeard = heard -> {
+                if (heard.isEmpty()) return;
+                query.setText(heard.get(0));
+                query.setSelection(query.length());
+                search.performClick();
+            };
+            mic.setOnClickListener(v -> {
+                // Listen inside our window (some TVs leave Google's "Speak now" window open on top
+                // after recognising); the Google window is only the fallback.
+                if (android.speech.SpeechRecognizer.isRecognitionAvailable(this)) {
+                    listenInPlace(query, voice, onHeard);
+                    return;
+                }
+                voiceResult = onHeard;
+                try { startActivityForResult(voice, REQUEST_VOICE); }
+                catch (Exception unavailable) { voiceResult = null; v.setVisibility(View.GONE); }
+            });
+            LinearLayout.LayoutParams micParams = new LinearLayout.LayoutParams(px(66), px(66));
+            micParams.leftMargin = px(12);
+            row.addView(mic, micParams);
+        }
+        content.addView(row, index, new LinearLayout.LayoutParams(-1, px(66)));
+    }
+
+    private static final int REQUEST_MIC = 42;
+    private android.speech.SpeechRecognizer recognizer;
+    private Runnable afterMicPermission;
+
+    /** Listens with the TV's speech service; the field shows "Listening…" meanwhile. */
+    private void listenInPlace(EditText query, Intent voice, java.util.function.Consumer<List<String>> onHeard) {
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            afterMicPermission = () -> listenInPlace(query, voice, onHeard);
+            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, REQUEST_MIC);
+            return;
+        }
+        if (recognizer != null) recognizer.destroy();
+        recognizer = android.speech.SpeechRecognizer.createSpeechRecognizer(this);
+        CharSequence hint = query.getHint();
+        query.setText("");
+        query.setHint(tr("Słucham… powiedz nazwę", "Listening… say the name"));
+        recognizer.setRecognitionListener(new android.speech.RecognitionListener() {
+            private void done() {
+                query.setHint(hint);
+                if (recognizer != null) { recognizer.destroy(); recognizer = null; }
+            }
+            @Override public void onResults(android.os.Bundle results) {
+                List<String> heard = results.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+                done();
+                onHeard.accept(heard == null ? new ArrayList<>() : heard);
+            }
+            @Override public void onPartialResults(android.os.Bundle partial) {
+                List<String> heard = partial.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+                if (heard != null && !heard.isEmpty() && !heard.get(0).isEmpty()) query.setHint(heard.get(0) + "…");
+            }
+            @Override public void onError(int error) {
+                done();
+                query.setHint(tr("Nie usłyszałem – spróbuj jeszcze raz", "Didn't catch that – try again"));
+            }
+            @Override public void onReadyForSpeech(android.os.Bundle params) { }
+            @Override public void onBeginningOfSpeech() { }
+            @Override public void onRmsChanged(float rms) { }
+            @Override public void onBufferReceived(byte[] buffer) { }
+            @Override public void onEndOfSpeech() { }
+            @Override public void onEvent(int type, android.os.Bundle params) { }
+        });
+        Intent listen = new Intent(voice).putExtra(android.speech.RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        recognizer.startListening(listen);
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode != REQUEST_MIC) return;
+        Runnable next = afterMicPermission;
+        afterMicPermission = null;
+        if (next != null && results.length > 0 && results[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) next.run();
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_VOICE) return;
+        java.util.function.Consumer<List<String>> callback = voiceResult;
+        voiceResult = null;
+        if (callback == null || resultCode != RESULT_OK || data == null) return;
+        List<String> heard = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+        callback.accept(heard == null ? new ArrayList<>() : heard);
+    }
+
+    /** Simple microphone glyph for the voice search button. */
+    private static final class MicDrawable extends android.graphics.drawable.Drawable {
+        private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final int size;
+        MicDrawable(int color, int size) {
+            this.size = size;
+            paint.setColor(color);
+            paint.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+        }
+        @Override public int getIntrinsicWidth() { return size; }
+        @Override public int getIntrinsicHeight() { return size; }
+        @Override public void draw(android.graphics.Canvas c) {
+            android.graphics.Rect b = getBounds();
+            float s = b.width(), x = b.left, y = b.top, stroke = s * 0.09f;
+            paint.setStyle(android.graphics.Paint.Style.FILL);
+            c.drawRoundRect(x + s * 0.34f, y + s * 0.04f, x + s * 0.66f, y + s * 0.62f, s * 0.16f, s * 0.16f, paint);
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            paint.setStrokeWidth(stroke);
+            c.drawArc(x + s * 0.2f, y + s * 0.22f, x + s * 0.8f, y + s * 0.76f, 0, 180, false, paint);
+            c.drawLine(x + s * 0.5f, y + s * 0.76f, x + s * 0.5f, y + s * 0.94f, paint);
+        }
+        @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
+        @Override public void setColorFilter(android.graphics.ColorFilter filter) { paint.setColorFilter(filter); }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    }
+
     /** "Search club by name": type part of the name, choose from clubs of all leagues. */
     private void showClubSearch(int slot, CalendarFeed[] draft, TextView button, Dialog setup, TextView wizardStatus) {
         Dialog dialog = new Dialog(this);
@@ -1573,7 +1724,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         query.setPadding(px(20), 0, px(20), 0);
         query.setBackground(shape(night ? 0xFF2B4268 : 0xFFE3E9F0,
                 night ? 0xFF7899C3 : 0xFFB7C4D5, 15));
-        content.addView(query, new LinearLayout.LayoutParams(-1, px(66)));
+        int queryIndex = content.getChildCount();
         TextView status = popupDescription(content, "");
         LinearLayout results = new LinearLayout(this);
         results.setOrientation(LinearLayout.VERTICAL);
@@ -1594,6 +1745,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         searchParams.leftMargin = px(14);
         actions.addView(search, searchParams);
         content.addView(actions);
+        addSearchField(content, queryIndex, query, search);
         focusDownTo(query, search, results);
         search.setOnClickListener(v -> {
             String name = query.getText().toString().trim();
@@ -1869,11 +2021,154 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             if (dockExpand != null) dockExpand.requestFocus();
             else root.requestFocus();
         }
+        // The update bar uses the same place; while it is shown, Spotify waits.
+        if (updateBar != null && updateBar.getVisibility() == View.VISIBLE) visible = false;
         spotifyBar.setVisibility(visible ? View.VISIBLE : View.GONE);
         if (!visible) return;
         spotifyTitle.setSong(spotifyPerformer, spotifyTrack);
         spotifyCover.setImageBitmap(spotifyArtwork);
         spotifyBar.setContentDescription("Spotify: " + (spotifyPerformer == null ? "" : spotifyPerformer + ", ") + spotifyTrack);
+    }
+
+    // ---- "Update available" (see AppUpdates and the mockup in docs) ----
+    private AppUpdates.Release pendingUpdate;
+    private FrameLayout updateBar;
+    private View updateDot;
+
+    /** Asks GitHub (at most once a day) in the background and shows the bar when newer. */
+    private void checkForUpdate(boolean force) {
+        new Thread(() -> {
+            AppUpdates.Release found = AppUpdates.check(this, force);
+            android.util.Log.d("LinarTV", "Update check: installed " + AppUpdates.installedVersion(this)
+                    + ", newer " + (found == null ? "none" : found.version));
+            handler.post(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                boolean changed = (found == null) != (pendingUpdate == null)
+                        || (found != null && !found.version.equals(pendingUpdate.version));
+                pendingUpdate = found;
+                if (changed) renderUpdateBar();
+            });
+        }, "update-check").start();
+    }
+
+    /** Same place and size as the Spotify bar: icon, "Update available", Later / Update. */
+    private void renderUpdateBar() {
+        if (updateBar != null) root.removeView(updateBar);
+        if (updateDot != null) root.removeView(updateDot);
+        updateBar = null; updateDot = null;
+        if (pendingUpdate == null || root == null) { updateSpotifyBar(); return; }
+        AppUpdates.Release release = pendingUpdate;
+        // A small green dot on the settings button stays until the update is installed.
+        updateDot = new View(this);
+        updateDot.setBackground(shape(0xFF2FBF5B, night ? 0xFF142548 : 0xFFF5F2EA, 9));
+        place(updateDot, 1538 + 56, 47, 18, 18);
+        if (AppUpdates.postponed(this, release)) { updateSpotifyBar(); return; }
+        updateBar = new FrameLayout(this);
+        updateBar.setBackground(shape(panel, outline, 24));
+        FrameLayout icon = new FrameLayout(this);
+        icon.setBackground(shape(panel, outline, 30));
+        ImageView symbol = new ImageView(this);
+        symbol.setImageResource(R.drawable.ic_toolbar_update);
+        symbol.setColorFilter(ink);
+        icon.addView(symbol, new FrameLayout.LayoutParams(px(32), px(32), Gravity.CENTER));
+        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(px(60), px(60));
+        iconParams.leftMargin = px(8); iconParams.topMargin = px(8);
+        updateBar.addView(icon, iconParams);
+        TextView label = new TextView(this);
+        android.text.SpannableStringBuilder text = new android.text.SpannableStringBuilder(
+                tr("Dostępna aktualizacja ", "Update available "));
+        int start = text.length();
+        text.append("LinarTV ").append(release.version);
+        text.setSpan(new android.text.style.StyleSpan(Typeface.BOLD), start, text.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        label.setText(text);
+        label.setTextColor(ink);
+        label.setSingleLine(true);
+        label.setGravity(Gravity.CENTER_VERTICAL);
+        label.setAutoSizeTextTypeUniformWithConfiguration(px(18), px(26), 1, TypedValue.COMPLEX_UNIT_PX);
+        FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(px(470), -1);
+        labelParams.leftMargin = px(84);
+        updateBar.addView(label, labelParams);
+        TextView later = setupButton(tr("Później", "Later"));
+        TextView update = setupButton(tr("Aktualizuj", "Update"));
+        for (TextView b : new TextView[]{later, update}) { fitOneLine(b); b.setGravity(Gravity.CENTER); }
+        FrameLayout.LayoutParams laterParams = new FrameLayout.LayoutParams(px(140), px(54), Gravity.END | Gravity.CENTER_VERTICAL);
+        laterParams.rightMargin = px(11 + 160 + 10);
+        FrameLayout.LayoutParams updateParams = new FrameLayout.LayoutParams(px(160), px(54), Gravity.END | Gravity.CENTER_VERTICAL);
+        updateParams.rightMargin = px(11);
+        updateBar.addView(later, laterParams);
+        updateBar.addView(update, updateParams);
+        later.setOnClickListener(v -> {
+            AppUpdates.postpone(this, release);
+            if (later.hasFocus() && root.findFocus() != null) root.requestFocus();
+            renderUpdateBar();
+        });
+        update.setOnClickListener(v -> downloadUpdate(release));
+        place(updateBar, 430, 45, 880, 76);
+        updateSpotifyBar();
+    }
+
+    /** Downloads LinarTV.apk with a progress window, then opens Android's install window. */
+    private void downloadUpdate(AppUpdates.Release release) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout content = popupContent();
+        popupTitle(content, tr("Pobieranie aktualizacji", "Downloading update"));
+        TextView status = popupDescription(content, "LinarTV " + release.version);
+        android.widget.ProgressBar bar = new android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        bar.setMax(1000);
+        LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(-1, px(14));
+        barParams.setMargins(0, px(12), 0, px(18));
+        content.addView(bar, barParams);
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.END);
+        TextView cancel = setupButton(tr("Anuluj", "Cancel"));
+        cancel.setGravity(Gravity.CENTER);
+        actions.addView(cancel, new LinearLayout.LayoutParams(px(160), px(58)));
+        content.addView(actions);
+        Thread worker = new Thread(() -> {
+            try {
+                File apk = AppUpdates.download(this, release, (done, total) -> handler.post(() -> {
+                    if (total > 0) bar.setProgress((int) (done * 1000 / total));
+                    status.setText(android.text.format.Formatter.formatShortFileSize(this, done)
+                            + (total > 0 ? " / " + android.text.format.Formatter.formatShortFileSize(this, total) : ""));
+                }));
+                boolean same = AppUpdates.sameSigner(this, apk);
+                handler.post(() -> {
+                    if (!dialog.isShowing()) return;
+                    dialog.dismiss();
+                    if (!same) {
+                        showMessageDialog(tr("Nie można zaktualizować", "Cannot update"), tr(
+                                "Zainstalowana wersja LinarTV jest podpisana innym kluczem niż wydanie na GitHubie (np. wersja testowa). Odinstaluj ją i zainstaluj LinarTV.apk z GitHuba.",
+                                "The installed LinarTV is signed with a different key than the GitHub release (e.g. a test build). Uninstall it and install LinarTV.apk from GitHub."));
+                        return;
+                    }
+                    Intent install = new Intent(Intent.ACTION_INSTALL_PACKAGE)
+                            .setData(UpdateFileProvider.uriFor(this, apk))
+                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            .putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+                    try { startActivity(install); }
+                    catch (Exception e) {
+                        showMessageDialog(tr("Nie można zaktualizować", "Cannot update"),
+                                tr("Telewizor nie otworzył okna instalacji.", "The TV did not open the install window."));
+                    }
+                });
+            } catch (Exception failed) {
+                android.util.Log.w("LinarTV", "Update download failed", failed);
+                handler.post(() -> {
+                    if (!dialog.isShowing()) return;
+                    status.setText(tr("Nie udało się pobrać aktualizacji. Sprawdź połączenie z internetem.",
+                            "Could not download the update. Check your internet connection."));
+                });
+            }
+        }, "update-download");
+        cancel.setOnClickListener(v -> { worker.interrupt(); dialog.dismiss(); });
+        watchFit(content);
+        dialog.setContentView(content);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        showDialogWithBlur(dialog);
+        dialog.getWindow().setLayout(px(700), -2);
+        cancel.requestFocus();
+        worker.start();
     }
 
     private void enableSpotifyPanel() {

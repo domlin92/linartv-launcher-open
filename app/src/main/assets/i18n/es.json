@@ -212,5 +212,17 @@
   "Searching for club…": "Buscando equipo…",
   "Could not load the club list. Check your internet connection.": "No se pudo cargar la lista de equipos. Comprueba tu conexión a Internet.",
   "Club not found: ": "Equipo no encontrado: ",
-  "Choose the club:": "Elige el equipo:"
+  "Choose the club:": "Elige el equipo:",
+  "Voice search": "Búsqueda por voz",
+  "Update available ": "Actualización disponible: ",
+  "Later": "Más tarde",
+  "Update": "Actualizar",
+  "Downloading update": "Descargando actualización",
+  "Cannot update": "No se puede actualizar",
+  "The installed LinarTV is signed with a different key than the GitHub release (e.g. a test build). Uninstall it and install LinarTV.apk from GitHub.": "El LinarTV instalado está firmado con una clave distinta a la versión de GitHub (p. ej., una versión de prueba). Desinstálalo e instala LinarTV.apk desde GitHub.",
+  "The TV did not open the install window.": "El televisor no abrió la ventana de instalación.",
+  "Could not download the update. Check your internet connection.": "No se pudo descargar la actualización. Comprueba tu conexión a Internet.",
+  "Update to LinarTV ": "Actualizar a LinarTV ",
+  "Listening… say the name": "Escuchando… di el nombre",
+  "Didn't catch that – try again": "No te he entendido, inténtalo de nuevo"
 }

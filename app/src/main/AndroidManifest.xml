@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <!-- "Update" opens Android's own install window for a newer LinarTV from GitHub Releases. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Voice search in the club/city search: asked only when the microphone button is pressed. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Not required: projectors and boxes with plain Android (e.g. Wanbo T2 Max) have no leanback. -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -23,6 +27,8 @@
         android:banner="@drawable/banner_linar_tv"
         android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="true">
         <service android:name=".WakeService" android:exported="false" />
+        <provider android:name=".UpdateFileProvider" android:authorities="${applicationId}.updates"
+            android:exported="false" android:grantUriPermissions="true" />
         <receiver android:name=".BootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
