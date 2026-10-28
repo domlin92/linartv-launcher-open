@@ -734,6 +734,10 @@ public final class DashboardActivity extends Activity {
     }
 
     private void renderPublicSettings(Dialog dialog, boolean focusLanguage) {
+        // When a setting is saved the panel is drawn again; keep the focus on the tile or
+        // button that was used (e.g. "Weather"), not on the first tile.
+        View before = dialog.isShowing() ? dialog.getCurrentFocus() : null;
+        String keepFocus = before == null ? null : focusKey(before);
         LinearLayout content = popupContent();
         content.setClipChildren(false);
         content.setClipToPadding(false);
@@ -828,8 +832,29 @@ public final class DashboardActivity extends Activity {
         if (!dialog.isShowing()) showDialogWithBlur(dialog);
         alignSidePanel(dialog);
         View first = content.findViewById(settingsFirstTileId);
+        View again = keepFocus == null ? null : findByFocusKey(content, keepFocus);
         if (focusLanguage) language.requestFocus();
+        else if (again != null) again.requestFocus();
         else if (first != null) first.requestFocus();
+    }
+
+    /** What identifies a settings control between redraws: its description or its label. */
+    private static String focusKey(View view) {
+        if (view.getContentDescription() != null) return "d:" + view.getContentDescription();
+        if (view instanceof TextView) return "t:" + ((TextView) view).getText();
+        return null;
+    }
+
+    private static View findByFocusKey(View view, String key) {
+        if (view.isFocusable() && key.equals(focusKey(view))) return view;
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View found = findByFocusKey(group.getChildAt(i), key);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private void alignSidePanel(Dialog dialog) {
@@ -977,10 +1002,14 @@ public final class DashboardActivity extends Activity {
     }
 
     private void showScreensaverSettings() {
+        int minutes = getPreferences(MODE_PRIVATE).getInt("screensaver_minutes", 5);
+        int current = java.util.Arrays.asList(0, 2, 5, 10, 15).indexOf(minutes);
+        String custom = tr("Własny czas…", "Custom time…");
+        if (current < 0) { current = 5; custom += " (" + minutes + " min)"; }
         showChoiceDialog(tr("Wygaszacz", "Screensaver"), new String[]{
                 tr("Wyłączony", "Off"), tr("Po 2 minutach", "After 2 minutes"),
                 tr("Po 5 minutach", "After 5 minutes"), tr("Po 10 minutach", "After 10 minutes"),
-                tr("Po 15 minutach", "After 15 minutes"), tr("Własny czas…", "Custom time…")}, which -> {
+                tr("Po 15 minutach", "After 15 minutes"), custom}, current, which -> {
             if (which == 5) {
                 showNumberSetting(tr("Czas bezczynności (minuty)", "Idle time (minutes)"),
                         getPreferences(MODE_PRIVATE).getInt("screensaver_minutes", 5), 1, 1440,
@@ -1003,9 +1032,14 @@ public final class DashboardActivity extends Activity {
     }
 
     private void showAppearanceSettings() {
+        SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        String mode = prefs.getString("appearance_mode", "auto");
+        // "Custom schedule" is stored as automatic mode with own day/night start times.
+        int current = "light".equals(mode) ? 1 : "dark".equals(mode) ? 2
+                : prefs.contains("day_start_minute") || prefs.contains("night_start_minute") ? 3 : 0;
         showChoiceDialog(tr("Wygląd launchera", "Launcher appearance"), new String[]{
                 tr("Automatycznie", "Automatic"), tr("Zawsze jasny", "Always light"),
-                tr("Zawsze ciemny", "Always dark"), tr("Własne godziny", "Custom schedule")}, which -> {
+                tr("Zawsze ciemny", "Always dark"), tr("Własne godziny", "Custom schedule")}, current, which -> {
             if (which == 3) { showAppearanceSchedule(); return; }
             getPreferences(MODE_PRIVATE).edit().putString("appearance_mode", new String[]{"auto", "light", "dark"}[which]).apply();
             applyVisualSettingsNow();
@@ -1108,7 +1142,7 @@ public final class DashboardActivity extends Activity {
 
     private void showTemperatureUnitSetup() {
         showChoiceDialog(tr("Jednostka temperatury", "Temperature unit"),
-                new String[]{"°C", "°F"}, which -> {
+                new String[]{"°C", "°F"}, fahrenheit ? 1 : 0, which -> {
             boolean selectedFahrenheit = which == 1;
             if (fahrenheit == selectedFahrenheit) return;
             fahrenheit = selectedFahrenheit;
@@ -1148,7 +1182,9 @@ public final class DashboardActivity extends Activity {
 
     private void showLanguageSetup() {
         String[] choices = {tr("Systemowy", "System"), "Polski", "English", "Deutsch", "Español", "Italiano"};
-        showChoiceDialog(tr("Język", "Language"), choices, which -> {
+        int current = java.util.Arrays.asList(LanguageChoice.CODES)
+                .indexOf(getPreferences(MODE_PRIVATE).getString("language", "auto"));
+        showChoiceDialog(tr("Język", "Language"), choices, current, which -> {
             String language = LanguageChoice.CODES[which];
             translations = new Translations(this, language);
             english = !"pl".equals(translations.code());
@@ -1289,6 +1325,11 @@ public final class DashboardActivity extends Activity {
     }
 
     private void showChoiceDialog(String title, String[] labels, java.util.function.IntConsumer onChoose) {
+        showChoiceDialog(title, labels, -1, onChoose);
+    }
+
+    /** {@code selected}: the current setting, marked with a tick and focused first (-1: none). */
+    private void showChoiceDialog(String title, String[] labels, int selected, java.util.function.IntConsumer onChoose) {
         Dialog dialog = new Dialog(this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         LinearLayout content = popupContent();
@@ -1318,6 +1359,11 @@ public final class DashboardActivity extends Activity {
         for (int i = 0; i < labels.length; i++) {
             final int index = i;
             TextView button = setupButton(labels[i]);
+            if (i == selected) {
+                button.setText(labels[i] + "   ✓");
+                button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                button.setContentDescription(labels[i] + ", " + tr("wybrane", "selected"));
+            }
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, px(62));
             params.bottomMargin = px(10);
             choices.addView(button, params);
@@ -1348,7 +1394,8 @@ public final class DashboardActivity extends Activity {
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog);
         dialog.getWindow().setLayout(px(780), -2);
-        if (choices.getChildCount() > 0) choices.getChildAt(0).requestFocus();
+        if (selected >= 0 && selected < choices.getChildCount()) choices.getChildAt(selected).requestFocus();
+        else if (choices.getChildCount() > 0) choices.getChildAt(0).requestFocus();
     }
 
     private void showMessageDialog(String title, String message) {

@@ -5,6 +5,11 @@ Every release gets an entry here in Polish and English. Newest first.
 
 ## Niewydane / Unreleased
 
+- Okna wyboru (wygaszacz, wygląd, jednostka temperatury, język) zaznaczają obecne ustawienie znakiem ✓ i od niego zaczynają; własny czas wygaszacza pokazuje liczbę minut.
+- Choice windows (screensaver, appearance, temperature unit, language) mark the current setting with ✓ and start on it; a custom screensaver time shows its minutes.
+- Po zapisaniu ustawienia panel Ustawień zostawia zaznaczony kafelek, z którego przyszliśmy (np. „Pogoda”), zamiast wracać na pierwszy.
+- After saving a setting, the Settings panel keeps the tile you came from selected (e.g. "Weather") instead of jumping back to the first one.
+
 - Aktualizacje z poziomu aplikacji: raz dziennie LinarTV sprawdza najnowsze wydanie na GitHubie. Gdy jest nowsze, w miejscu paska Spotify pojawia się „Dostępna aktualizacja” z przyciskami „Później” i „Aktualizuj”; „Aktualizuj” pobiera LinarTV.apk i otwiera systemowe okno instalacji. Po „Później” aktualizacja czeka w Ustawieniach (przycisk „Aktualizuj do LinarTV …” i zielona kropka). Ustawienia zostają.
 - In-app updates: once a day LinarTV checks the latest GitHub release. When it is newer, an "Update available" bar with "Later" and "Update" appears where the Spotify bar is; "Update" downloads LinarTV.apk and opens Android's install window. After "Later" the update waits in Settings ("Update to LinarTV …" button and a green dot). Settings are kept.
 - Wyszukiwanie głosowe: przycisk mikrofonu przy wyszukiwaniu klubu i miasta. Słucha w okienku („Słucham…”), w języku aplikacji, korzystając z rozpoznawania mowy telewizora; przy pierwszym użyciu Android pyta o dostęp do mikrofonu.

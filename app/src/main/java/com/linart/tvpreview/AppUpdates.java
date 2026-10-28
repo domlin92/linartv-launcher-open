@@ -49,6 +49,8 @@ final class AppUpdates {
      * thread); in between the last answer is reused.
      */
     static Release check(Context context, boolean force) {
+        // GitHub Releases carry only LinarTV Open; other builds (LinarTV Private) never ask.
+        if (!"io.github.domlin92.linartv.open".equals(context.getPackageName())) return null;
         SharedPreferences prefs = prefs(context);
         // Only copies installed from GitHub Releases are offered updates. Test builds are signed
         // with another key; Android would refuse the release over them, so they never see the bar
