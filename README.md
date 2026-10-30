@@ -15,8 +15,15 @@
 
 <table align="center">
   <tr>
-    <td align="center"><img alt="LinarTV home screen with one club / ekran główny LinarTV z jednym klubem" src="docs/images/linartv-home-1-club.png" width="420"><br><sub>One club · Jeden klub</sub></td>
-    <td align="center"><img alt="LinarTV home screen with two clubs / ekran główny LinarTV z dwoma klubami" src="docs/images/linartv-home-2-clubs.png" width="420"><br><sub>Two clubs · Dwa kluby</sub></td>
+    <td align="center"><img alt="LinarTV home screen: Cracovia and Arsenal / ekran główny LinarTV: Cracovia i Arsenal" src="docs/images/linartv-home-2-clubs.png" width="420"><br><sub>Polish club + Premier League · Klub polski + Premier League</sub></td>
+    <td align="center"><img alt="LinarTV in German with Bayern Munich and Munich weather / LinarTV po niemiecku z Bayernem i pogodą w Monachium" src="docs/images/linartv-home-1-club.png" width="420"><br><sub>One club, German interface · Jeden klub, interfejs niemiecki</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img alt="Club search by name with a microphone button / wyszukiwanie klubu po nazwie z przyciskiem mikrofonu" src="docs/images/linartv-club-search.png" width="420"><br><sub>Club search, also by voice · Wyszukiwanie klubu, także głosem</sub></td>
+    <td align="center"><img alt="Weather details with a 7-day forecast / szczegóły pogody z prognozą na 7 dni" src="docs/images/linartv-weather-details.png" width="420"><br><sub>Weather details · Szczegóły pogody</sub></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img alt="Update available bar / pasek „Dostępna aktualizacja”" src="docs/images/linartv-update-bar.png" width="420"><br><sub>Updates inside the app · Aktualizacje w aplikacji</sub></td>
   </tr>
 </table>
 
@@ -24,15 +31,18 @@
 
 ## English
 
-**LinarTV** is a clean, fast home screen for Android TV built around Polish football. It shows the clock, the weather for your city and the next matches of one or two clubs you follow — and keeps your favourite apps one click away.
+**LinarTV** is a clean, fast home screen for Android TV built around football — from the Polish IV liga to the European top 5. It shows the clock, the weather for your city and the next matches of one or two clubs you follow — and keeps your favourite apps one click away.
 
 LinarTV replaces your home screen. It does not uninstall the TV manufacturer's apps or remove their advertising and tracking services. If you also want to tidy up the TV's system apps, [CleanYourTV](https://github.com/Gathin23/cleanyourtv) is a separate project you can use alongside LinarTV.
 
 ### Features
-- **Your clubs' fixtures** — pick one or two teams from Ekstraklasa, I liga, II liga, any of the four III liga groups or any of the 16 IV liga groups on [kalendarzeligowe.pl](https://kalendarzeligowe.pl); fixtures update daily, with club crests.
-- **Weather for any city in the world** — current conditions, hourly and 7-day forecast from Open-Meteo, with Meteocons weather icons.
+- **Your clubs' fixtures** — pick one or two teams: Polish clubs from Ekstraklasa down to all 16 IV liga groups ([kalendarzeligowe.pl](https://kalendarzeligowe.pl)) and clubs from the **Premier League, La Liga, Bundesliga, Serie A and Ligue 1** ([fixtur.es](https://fixtur.es)) — league, domestic cups and European cups in one schedule, with club crests. Mix them freely.
+- **Find your club by name — or just say it**: club search in the setup wizard, with a microphone button that uses the TV's speech recognition.
+- **Match card at a glance** — competition and round, kick-off time in your time zone, "in 3 days", a green TODAY badge and a LIVE badge.
+- **Weather for any city in the world** — current conditions, hourly and 7-day forecast from Open-Meteo, with Meteocons weather icons; city search by keyboard or voice.
+- **Polish, English, German, Spanish or Italian interface** — follows the TV's system language or the one you choose; Celsius or Fahrenheit.
+- **Updates inside the app** — when a new release is out, LinarTV shows an "Update available" bar; one click downloads it and opens the install window. Your settings stay.
 - **Day and night modes**, app dock and full app drawer, quick access to TV inputs.
-- **Polish, English, German, Spanish or Italian interface** and Celsius or Fahrenheit temperature, selectable in LinarTV settings (new languages in the development version).
 - **Wallpapers from your phone** — scan a QR code and upload photos over your home Wi-Fi (6-digit code, attempt limit).
 - **Screensaver** with your photos after 5 minutes of inactivity.
 
@@ -55,6 +65,8 @@ LinarTV replaces your home screen. It does not uninstall the TV manufacturer's a
      ```
      Undo: `adb shell pm enable com.google.android.apps.tv.launcherx`. LinarTV 1.0.1 or newer is required.
 
+From version 1.0.2 on, LinarTV offers new versions by itself (Downloader is only needed for the first install).
+
 Or download `LinarTV.apk` directly from [Releases](https://github.com/domlin92/linartv-launcher-open/releases/latest).
 
 ### Install with an AI coding assistant (Codex, Claude Code)
@@ -71,7 +83,7 @@ Signed releases: see [docs/RELEASING.md](docs/RELEASING.md). What changed in eac
 
 ### Credits
 - Inspired by and started inside [Clean Your TV](https://cleanyour.tv/) by Gathin (MIT).
-- Fixtures: [kalendarzeligowe.pl](https://kalendarzeligowe.pl) — used with the site owner's permission.
+- Polish club fixtures: [kalendarzeligowe.pl](https://kalendarzeligowe.pl) — used with the site owner's permission.
 - Foreign club fixtures (Top 5 leagues, domestic and European cups): match data by [fixtur.es](https://fixtur.es) — used under their fair-use rules; credited on every match card.
 - Weather data: [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0); city search: Open-Meteo geocoding / GeoNames (CC BY 4.0).
 - Weather icons: [Meteocons](https://github.com/basmilius/weather-icons) by Bas Milius (MIT), bundled in the app.
@@ -85,15 +97,18 @@ Code: [MIT](LICENSE). Club crests and third-party logos are not covered by the c
 
 ## Polski
 
-**LinarTV** to czytelny, szybki ekran główny dla Android TV z myślą o polskiej piłce. Pokazuje zegar, pogodę dla Twojego miasta i najbliższe mecze jednego lub dwóch klubów — a ulubione aplikacje są zawsze pod ręką.
+**LinarTV** to czytelny, szybki ekran główny dla Android TV z myślą o piłce — od polskiej IV ligi po europejską Top 5. Pokazuje zegar, pogodę dla Twojego miasta i najbliższe mecze jednego lub dwóch klubów — a ulubione aplikacje są zawsze pod ręką.
 
 LinarTV zastępuje ekran główny. Nie odinstalowuje aplikacji producenta telewizora ani nie usuwa jego usług reklamowych i śledzących. Jeśli chcesz również uporządkować aplikacje systemowe TV, [CleanYourTV](https://github.com/Gathin23/cleanyourtv) to osobny projekt, z którego możesz korzystać obok LinarTV.
 
 ### Funkcje
-- **Terminarz Twoich klubów** — wybierz jedną lub dwie drużyny z Ekstraklasy, I ligi, II ligi, dowolnej z czterech grup III ligi lub dowolnej z 16 grup IV ligi na [kalendarzeligowe.pl](https://kalendarzeligowe.pl); terminarze odświeżają się codziennie, z herbami klubów.
-- **Pogoda dla dowolnego miasta na świecie** — aktualne warunki, prognoza godzinowa i 7-dniowa z Open-Meteo oraz ikony Meteocons. Miasto zmienisz w *Ustawieniach*.
+- **Terminarz Twoich klubów** — wybierz jedną lub dwie drużyny: polskie od Ekstraklasy po wszystkie 16 grup IV ligi ([kalendarzeligowe.pl](https://kalendarzeligowe.pl)) oraz kluby z **Premier League, La Ligi, Bundesligi, Serie A i Ligue 1** ([fixtur.es](https://fixtur.es)) — liga, krajowe i europejskie puchary w jednym terminarzu, z herbami klubów. Miksuj dowolnie.
+- **Znajdź klub po nazwie — albo po prostu powiedz**: wyszukiwanie klubu w kreatorze z przyciskiem mikrofonu, który korzysta z rozpoznawania mowy telewizora.
+- **Karta meczu w skrócie** — rozgrywki i kolejka, godzina w Twojej strefie czasowej, „za 3 dni”, zielony znaczek DZISIAJ i znaczek LIVE.
+- **Pogoda dla dowolnego miasta na świecie** — aktualne warunki, prognoza godzinowa i 7-dniowa z Open-Meteo oraz ikony Meteocons; miasto wyszukasz klawiaturą albo głosem.
+- **Język polski, angielski, niemiecki, hiszpański lub włoski** — jak w systemie telewizora albo wybrany przez Ciebie; temperatura w °C lub °F.
+- **Aktualizacje w aplikacji** — gdy pojawi się nowa wersja, LinarTV pokaże pasek „Dostępna aktualizacja”; jedno kliknięcie pobiera ją i otwiera okno instalacji. Ustawienia zostają.
 - **Tryb dzienny i nocny**, pasek aplikacji i pełna lista aplikacji, szybki dostęp do źródeł TV.
-- **Język polski, angielski, niemiecki, hiszpański lub włoski** oraz temperatura w stopniach Celsjusza lub Fahrenheita, wybierane w ustawieniach LinarTV (nowe języki w wersji deweloperskiej).
 - **Tapety z telefonu** — zeskanuj kod QR i wyślij zdjęcia przez domowe Wi-Fi (6-cyfrowy kod z limitem prób).
 - **Wygaszacz** z Twoimi zdjęciami po 5 minutach bezczynności.
 
@@ -121,6 +136,8 @@ Opis działania i źródeł danych: [docs/FUNCTIONAL.md](docs/FUNCTIONAL.md) (z 
      ```
      Przywrócenie: `adb shell pm enable com.google.android.apps.tv.launcherx`. Wymagana wersja LinarTV 1.0.1 lub nowsza.
 
+Od wersji 1.0.2 LinarTV sam proponuje nowe wersje (Downloader jest potrzebny tylko przy pierwszej instalacji).
+
 Plik `LinarTV.apk` możesz też pobrać bezpośrednio z [Releases](https://github.com/domlin92/linartv-launcher-open/releases/latest).
 
 ### Budowanie
@@ -132,7 +149,7 @@ Podpisane wydania: [docs/RELEASING.md](docs/RELEASING.md). Zmiany w kolejnych we
 
 ### Podziękowania
 - Projekt powstał na bazie i z inspiracji [Clean Your TV](https://cleanyour.tv/) (Gathin, MIT).
-- Terminarze: [kalendarzeligowe.pl](https://kalendarzeligowe.pl) — za zgodą właściciela serwisu.
+- Terminarze polskich klubów: [kalendarzeligowe.pl](https://kalendarzeligowe.pl) — za zgodą właściciela serwisu.
 - Terminarze klubów zagranicznych (Top 5 lig, krajowe i europejskie puchary): dane meczowe [fixtur.es](https://fixtur.es) — na zasadach „fair use” fixtur.es; podpis na każdej karcie meczu.
 - Dane pogodowe: [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0); wyszukiwanie miast: geokodowanie Open-Meteo / GeoNames (CC BY 4.0).
 - Ikony pogody: [Meteocons](https://github.com/basmilius/weather-icons), Bas Milius (MIT), wbudowane w aplikację.

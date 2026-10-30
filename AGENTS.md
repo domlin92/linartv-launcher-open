@@ -8,7 +8,7 @@ Plik czytają Codex, Claude Code i podobne narzędzia (Claude Code wczytuje go p
 ## English
 
 ### What this project is
-LinarTV Open is an Android TV home screen (launcher) for Polish football fans: clock, Open-Meteo weather for any city worldwide, fixtures of one or two clubs from kalendarzeligowe.pl, an app dock, wallpapers and a screensaver. One activity (`DashboardActivity`), plain Java, no Kotlin, no Compose. Read [docs/FUNCTIONAL.md](docs/FUNCTIONAL.md) first.
+LinarTV Open is an Android TV home screen (launcher) for football fans: clock, Open-Meteo weather for any city worldwide, fixtures of one or two clubs (Polish clubs from kalendarzeligowe.pl, top 5 foreign leagues from fixtur.es), club search by name or voice, five interface languages, in-app updates from GitHub Releases, an app dock, wallpapers and a screensaver. One activity (`DashboardActivity`), plain Java, no Kotlin, no Compose. Read [docs/FUNCTIONAL.md](docs/FUNCTIONAL.md) first.
 
 ### Typical user request: "install LinarTV on my TV"
 Work step by step and tell the user what each step does. Ask before every step that changes the TV.
@@ -66,7 +66,7 @@ Work step by step and tell the user what each step does. Ask before every step t
 ## Polski
 
 ### Czym jest projekt
-LinarTV Open to ekran główny (launcher) dla Android TV dla kibiców polskiej piłki: zegar, pogoda Open-Meteo dla dowolnego miasta na świecie, terminarz jednego lub dwóch klubów z kalendarzeligowe.pl, dock aplikacji, tapety i wygaszacz. Jedna aktywność (`DashboardActivity`), czysta Java, bez Kotlina i Compose. Najpierw przeczytaj [docs/FUNCTIONAL.md](docs/FUNCTIONAL.md).
+LinarTV Open to ekran główny (launcher) dla Android TV dla kibiców piłki: zegar, pogoda Open-Meteo dla dowolnego miasta na świecie, terminarz jednego lub dwóch klubów (polskie z kalendarzeligowe.pl, Top 5 lig zagranicznych z fixtur.es), wyszukiwanie klubu po nazwie lub głosem, pięć języków, aktualizacje z GitHub Releases, dock aplikacji, tapety i wygaszacz. Jedna aktywność (`DashboardActivity`), czysta Java, bez Kotlina i Compose. Najpierw przeczytaj [docs/FUNCTIONAL.md](docs/FUNCTIONAL.md).
 
 ### Typowa prośba: „zainstaluj LinarTV na moim telewizorze”
 Pracuj krok po kroku i mów użytkownikowi, co robi każdy krok. Pytaj przed każdym krokiem, który zmienia coś na telewizorze.
