@@ -44,11 +44,11 @@ final class ClubDirectory {
 
     /** Clubs whose name contains the query (accents and case ignored); name starts first. */
     static List<Club> search(List<Club> all, String query, int limit) {
-        String q = CrestNameIndex.normalize(query);
+        String q = ClubNames.normalize(query);
         List<Club> starts = new ArrayList<>(), contains = new ArrayList<>();
         if (q.isEmpty()) return starts;
         for (Club club : all) {
-            String name = CrestNameIndex.normalize(club.name);
+            String name = ClubNames.normalize(club.name);
             if (name.startsWith(q) || (" " + name).contains(" " + q)) starts.add(club);
             else if (name.contains(q)) contains.add(club);
         }

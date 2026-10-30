@@ -72,7 +72,7 @@ final class CrestRepository {
     Bitmap get(String name, int id) { return get(name, id, false); }
     private Bitmap get(String name, int id, boolean force) {
         if (closed) return null;
-        String normalized = CrestNameIndex.normalize(name);
+        String normalized = ClubNames.normalize(name);
         if (id <= 0) id = prefs.getInt("club_id_" + normalized, 0);
         Entry e = id > 0 ? byId.get(id) : byName.get(normalized);
         if (e == null) {
@@ -136,7 +136,7 @@ final class CrestRepository {
                 Files.move(temporary.toPath(), cached.toPath(), StandardCopyOption.REPLACE_EXISTING);
             } finally { if (temporary.isFile()) temporary.delete(); }
             prefs.edit().putLong("downloaded_" + id, now).putLong("version_" + id, version)
-                    .putInt("club_id_" + CrestNameIndex.normalize(e.name), id).apply();
+                    .putInt("club_id_" + ClubNames.normalize(e.name), id).apply();
             finish(e, id, image, version, REFRESH_MS, "network");
         } catch (Exception unavailable) {
             // Most IV liga teams have no crest yet (404): ask again after 12 h, not every 5 min.
@@ -151,7 +151,7 @@ final class CrestRepository {
      * The address contains a content hash, so a cached file never needs refreshing.
      */
     private boolean loadForeignLogo(Entry e) throws Exception {
-        String key = "logo2_url_" /* v2: matched by file and display name */ + CrestNameIndex.normalize(e.name);
+        String key = "logo2_url_" /* v2: matched by file and display name */ + ClubNames.normalize(e.name);
         String url = prefs.getString(key, null);
         if (url == null) {
             FixturesClient.loadLogoPages();
@@ -211,10 +211,10 @@ final class CrestRepository {
     private int findTeamId(String name) throws Exception {
         JSONArray rows = new JSONArray(new String(fetch(API + "?search=" + URLEncoder.encode(name, "UTF-8"), 100_000), StandardCharsets.UTF_8));
         int found = 0;
-        String normalized = CrestNameIndex.normalize(name);
+        String normalized = ClubNames.normalize(name);
         for (int i = 0; i < rows.length(); i++) {
             JSONObject row = rows.getJSONObject(i);
-            if (!row.optBoolean("hasLogo") || !normalized.equals(CrestNameIndex.normalize(row.optString("name")))) continue;
+            if (!row.optBoolean("hasLogo") || !normalized.equals(ClubNames.normalize(row.optString("name")))) continue;
             int id = row.optInt("id", 0);
             if (found > 0 && found != id) return 0;
             found = id;

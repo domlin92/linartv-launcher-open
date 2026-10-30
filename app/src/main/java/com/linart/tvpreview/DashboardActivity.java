@@ -1797,7 +1797,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         focusDownTo(query, search, results);
         search.setOnClickListener(v -> {
             String name = query.getText().toString().trim();
-            if (CrestNameIndex.normalize(name).length() < 2) {
+            if (ClubNames.normalize(name).length() < 2) {
                 status.setText(tr("Wpisz co najmniej dwie litery nazwy klubu.",
                         "Enter at least two letters of the club name."));
                 return;
