@@ -107,6 +107,10 @@ final class CrestRepository {
             // football-logos.cc only for clubs from fixtur.es feeds (no kalendarzeligowe.pl id);
             // Polish clubs without a crest keep their initials.
             if (id <= 0 && loadForeignLogo(e)) return;
+            // Crest lists not all read yet (e.g. a page timed out): try again soon, not in 12 h.
+            if (id <= 0 && !FixturesClient.logoPagesReady()) {
+                finish(e, 0, null, 0, RETRY_MS, "pages-pending"); return;
+            }
             if (id <= 0) id = findTeamId(e.name);
             // No crest for this name (e.g. foreign clubs): ask again only after 12 h.
             if (id <= 0) { finish(e, 0, null, 0, MISSING_MS, "missing"); return; }

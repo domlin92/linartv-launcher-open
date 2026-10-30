@@ -252,6 +252,9 @@ final class FixturesClient {
         return found.isEmpty() ? null : found;
     }
 
+    /** True once every country's crest list is known (from the network or the saved copy). */
+    static boolean logoPagesReady() { return LOGO_NAMES.size() == COUNTRIES.size(); }
+
     private static final long LOGO_PAGES_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000;
 
     /**

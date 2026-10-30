@@ -1244,7 +1244,7 @@ public final class DashboardActivity extends Activity {
         focusDownTo(query, search, results);
         search.setOnClickListener(v -> searchCity(query.getText().toString().trim(), dialog, results, status));
         query.setOnEditorActionListener((v, actionId, event) -> {
-            search.performClick();
+            if (event == null || event.getAction() == android.view.KeyEvent.ACTION_DOWN) search.performClick();
             return true;
         });
         watchFit(content);
@@ -1283,6 +1283,7 @@ public final class DashboardActivity extends Activity {
                     return;
                 }
                 status.setText(tr("Wybierz właściwe miasto:", "Choose the correct city:"));
+                results.removeAllViews(); // Enter can start the search twice; show one list
                 for (PublicForecastClient.Place place : found) {
                     TextView item = setupButton(place.label());
                     LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, px(62));
@@ -1823,6 +1824,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                         return;
                     }
                     status.setText(tr("Wybierz klub:", "Choose the club:"));
+                    results.removeAllViews(); // Enter can start the search twice; show one list
                     for (ClubDirectory.Club club : clubs) {
                         TextView item = setupButton(club.name + " · " + club.league);
                         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, px(62));
@@ -1846,7 +1848,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             }, "club-search").start();
         });
         query.setOnEditorActionListener((v, actionId, event) -> {
-            search.performClick();
+            if (event == null || event.getAction() == android.view.KeyEvent.ACTION_DOWN) search.performClick();
             return true;
         });
         watchFit(content);

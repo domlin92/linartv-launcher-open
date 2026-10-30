@@ -3,44 +3,47 @@
 Każde wydanie ma tu wpis po polsku i po angielsku. Najnowsze na górze.
 Every release gets an entry here in Polish and English. Newest first.
 
-## Niewydane / Unreleased
+## 1.0.2 — 2026-10-30
 
-- Okna wyboru (wygaszacz, wygląd, jednostka temperatury, język) zaznaczają obecne ustawienie znakiem ✓ i od niego zaczynają; własny czas wygaszacza pokazuje liczbę minut.
-- Choice windows (screensaver, appearance, temperature unit, language) mark the current setting with ✓ and start on it; a custom screensaver time shows its minutes.
-- Po zapisaniu ustawienia panel Ustawień zostawia zaznaczony kafelek, z którego przyszliśmy (np. „Pogoda”), zamiast wracać na pierwszy.
-- After saving a setting, the Settings panel keeps the tile you came from selected (e.g. "Weather") instead of jumping back to the first one.
+**Polski**
 
-- Aktualizacje z poziomu aplikacji: raz dziennie LinarTV sprawdza najnowsze wydanie na GitHubie. Gdy jest nowsze, w miejscu paska Spotify pojawia się „Dostępna aktualizacja” z przyciskami „Później” i „Aktualizuj”; „Aktualizuj” pobiera LinarTV.apk i otwiera systemowe okno instalacji. Po „Później” aktualizacja czeka w Ustawieniach (przycisk „Aktualizuj do LinarTV …” i zielona kropka). Ustawienia zostają.
-- In-app updates: once a day LinarTV checks the latest GitHub release. When it is newer, an "Update available" bar with "Later" and "Update" appears where the Spotify bar is; "Update" downloads LinarTV.apk and opens Android's install window. After "Later" the update waits in Settings ("Update to LinarTV …" button and a green dot). Settings are kept.
-- Wyszukiwanie głosowe: przycisk mikrofonu przy wyszukiwaniu klubu i miasta. Słucha w okienku („Słucham…”), w języku aplikacji, korzystając z rozpoznawania mowy telewizora; przy pierwszym użyciu Android pyta o dostęp do mikrofonu.
-- Voice search: a microphone button next to club and city search. It listens inside the window ("Listening…") in the app language, using the TV's speech recognition; Android asks for microphone access on first use.
+Nowe
+- **Ligi zagraniczne Top 5:** Premier League, La Liga, Bundesliga, Serie A i Ligue 1. Terminarz łączy ligę, krajowe puchary i europejskie puchary. Dane meczów z [fixtur.es](https://fixtur.es), herby z [football-logos.cc](https://football-logos.cc).
+- **Wyszukiwanie klubu po nazwie** w kreatorze — kluby polskie i zagraniczne naraz. Także **głosowo**: przycisk mikrofonu przy wyszukiwaniu klubu i miasta.
+- **Języki:** niemiecki, hiszpański i włoski. Domyślnie język systemu telewizora (opcja „Systemowy”), można też wybrać ręcznie.
+- **Aktualizacje w aplikacji:** gdy na GitHubie jest nowsza wersja, pojawia się pasek „Dostępna aktualizacja” — „Aktualizuj” pobiera plik i otwiera okno instalacji. Ustawienia zostają.
 
-- Wyszukiwanie klubu po nazwie w kreatorze (pierwsza pozycja na liście krajów): kluby polskie i zagraniczne naraz, bez wybierania kraju i ligi.
-- Search club by name in the club wizard (first entry in the country list): Polish and foreign clubs at once, without choosing a country and league.
-- Herby klubów zagranicznych ładują się szybciej przy pierwszym uruchomieniu (listy herbów pięciu krajów pobierane równolegle).
-- Foreign club crests load faster on first start (the five countries' crest lists download in parallel).
-- Przyciski i opisy mieszczą się także po niemiecku, hiszpańsku i włosku (np. „Informazioni”, „Almacenamiento”, „Rimuovi la seconda squadra”).
-- Buttons and labels also fit in German, Spanish and Italian (e.g. "Informazioni", "Almacenamiento", "Rimuovi la seconda squadra").
+Ulepszone
+- Karty meczu i pogody mają pasek „Dane dostarcza: …” i czas odświeżenia.
+- Tytuł meczu „Gospodarz – Gość”; długie nazwy przechodzą do drugiej linii w całości. Data w dwóch liniach („Sobota, 7 listopada” / „za 12 dni”), w dniu meczu zielony znaczek DZISIAJ. Nagłówek karty: rozgrywki, a pod nimi kolejka lub etap.
+- Godziny meczów w strefie czasowej telewizora.
+- Wygodniejsze sterowanie pilotem: okna wyboru zaznaczają bieżące ustawienie (✓), strzałka w dół prowadzi do głównego przycisku, widać tylko najnowsze okienko, a po zapisaniu fokus wraca na użyty kafelek.
+- Herby zagraniczne ładują się szybciej; drobne poprawki (podwójne wyniki wyszukiwania, inicjały bez znaków typu „&”).
 
-- Interfejs niemiecki, hiszpański i włoski (DE/ES/IT): ustawienia, kreator klubów, pogoda, etapy rozgrywek oraz strona przesyłania zdjęć. Automatyczny wybór rozpoznaje pięć języków, daty i liczby są lokalizowane, a zmiana języka działa natychmiast.
-- German, Spanish and Italian interfaces (DE/ES/IT): settings, club setup, weather, competition stages and the phone upload page. Automatic selection recognises five languages; dates and numbers are localised and language changes apply immediately.
+Do wiadomości
+- Przy pierwszym użyciu mikrofonu Android zapyta o dostęp. Przy pierwszej aktualizacji z poziomu aplikacji Android poprosi o zgodę na instalowanie z LinarTV.
 
-- Język aplikacji domyślnie jak w systemie TV: polski system → polski, każdy inny → angielski. W Ustawieniach → Język nowa opcja „Systemowy”; wcześniejszy ręczny wybór zostaje.
-- The app language follows the TV system by default: Polish system → Polish, any other → English. Settings → Language has a new "System" option; an earlier manual choice is kept.
-- Karty meczu i pogody mają na dole wąski pasek: z lewej „Dane dostarcza: **dostawca**”, z prawej czas odświeżenia. Karty są nieco wyższe.
-- Match and weather cards have a thin bottom strip: "Data provided by: **provider**" on the left, the update time on the right. Cards are slightly taller.
-- Tytuł meczu jak w Private: „Gospodarz – Gość”; gdy nie mieści się w jednej linii, gość przechodzi w całości do drugiej, a nazwa klubu nigdy nie jest łamana. Inicjały w zastępczych herbach pomijają znaki typu „&”.
-- Match title as in Private: "Host – Guest"; if it does not fit in one line, the guest moves to the second line as a whole and a club name never breaks. Initials in placeholder crests skip characters such as "&".
-- Herby klubów zagranicznych z [football-logos.cc](https://football-logos.cc), gdy kalendarzeligowe.pl nie ma herbu. Źródła danych i herbów są wymienione w oknie „O aplikacji”.
-- Foreign club crests from [football-logos.cc](https://football-logos.cc) when kalendarzeligowe.pl has none. Data and crest sources are listed in the About window.
-- Nazwy klubów w kolumnach (gospodarz z lewej, gość z prawej), gdy mecz nie mieści się w jednej linii; godziny meczów w strefie czasowej telewizora, także dla meczów bez ustalonej godziny.
-- Club names in columns (host left, guest right) when the match does not fit on one line; kick-off times in the TV's time zone, also for date-only matches.
-- **Ligi zagraniczne:** Anglia, Francja, Hiszpania, Niemcy i Włochy (Premier League, Ligue 1, La Liga, Bundesliga, Serie A). W kreatorze najpierw kraj (Polska, potem reszta alfabetycznie), potem liga i klub. Dane z fixtur.es: liga, krajowe puchary (np. EFL Cup, Copa del Rey) i europejskie puchary w jednym terminarzu.
-- **Foreign leagues:** England, France, Germany, Italy and Spain (Premier League, Ligue 1, Bundesliga, Serie A, La Liga). The wizard asks for the country first (Poland, then the rest alphabetically), then the league and the club. Data from fixtur.es: league, domestic cups (e.g. EFL Cup, Copa del Rey) and European cups in one schedule.
-- Data meczu w dwóch liniach: „Sobota, 7 listopada”, a pod nią „za 12 dni”. W dniu meczu zamiast daty świeci zielony znaczek DZISIAJ (jak LIVE).
-- The match date has two lines: "Saturday, 7 November", then "in 12 days". On match day a green TODAY badge (like LIVE) replaces the date.
-- Nagłówek karty meczu ma zawsze dwie linie: liga, a pod nią kolejka lub etap — długie nazwy (np. IV liga warmińsko-mazurska) nie ucinają już numeru kolejki.
-- The match card header always has two lines: the competition, then the round or stage — long names (e.g. IV liga warmińsko-mazurska) no longer cut off the round.
+Podziękowania: Otto (fixtur.es) za dane meczów i Leo (football-logos.cc) za herby.
+
+**English**
+
+New
+- **Top 5 foreign leagues:** Premier League, La Liga, Bundesliga, Serie A and Ligue 1. One schedule with the league, domestic cups and European cups. Match data from [fixtur.es](https://fixtur.es), crests from [football-logos.cc](https://football-logos.cc).
+- **Search clubs by name** in the wizard — Polish and foreign clubs at once. Also **by voice**: a microphone button next to club and city search.
+- **Languages:** German, Spanish and Italian. The TV's system language by default ("System" option), or choose one yourself.
+- **In-app updates:** when a newer version is on GitHub, an "Update available" bar appears — "Update" downloads the file and opens the install window. Settings are kept.
+
+Improved
+- Match and weather cards show "Data provided by: …" and the update time.
+- Match title "Host – Guest"; long names move to the second line as a whole. Two-line date ("Saturday, 7 November" / "in 12 days"), a green TODAY badge on match day. Card header: competition, then round or stage.
+- Kick-off times in the TV's time zone.
+- Easier remote control: choice windows mark the current setting (✓), arrow down goes to the main button, only the newest window is visible, and after saving the focus returns to the tile you used.
+- Foreign crests load faster; small fixes (duplicated search results, initials without characters such as "&").
+
+Good to know
+- Android asks for microphone access on first use. On the first in-app update Android asks to allow installing from LinarTV.
+
+Thanks: Otto (fixtur.es) for match data and Leo (football-logos.cc) for the crests.
 
 ## 1.0.1 — 2026-10-26
 
