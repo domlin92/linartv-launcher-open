@@ -47,6 +47,14 @@ LinarTV replaces your home screen. It does not uninstall the TV manufacturer's a
    ```
    As the home screen, LinarTV opens after the TV starts and when it wakes from standby. On devices with plain Android (e.g. projectors) it is also listed among normal apps.
 
+   **Google TV (Chromecast with Google TV, Homatics and similar):**
+   - If the APK is blocked as harmful (Play Protect), choose *More details → Install anyway*, or turn off Play Protect scanning for a moment and turn it back on after installing.
+   - Google TV keeps opening its own launcher even when the command above prints `Success`. To use LinarTV as the home screen, disable the Google TV launcher (at your own risk; not yet tested by the maintainer):
+     ```text
+     adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
+     ```
+     Undo: `adb shell pm enable com.google.android.apps.tv.launcherx`. LinarTV 1.0.1 or newer is required.
+
 Or download `LinarTV.apk` directly from [Releases](https://github.com/domlin92/linartv-launcher-open/releases/latest).
 
 ### Install with an AI coding assistant (Codex, Claude Code)
@@ -104,6 +112,14 @@ Opis działania i źródeł danych: [docs/FUNCTIONAL.md](docs/FUNCTIONAL.md) (z 
    adb shell cmd package set-home-activity --user 0 io.github.domlin92.linartv.open/com.linart.tvpreview.DashboardActivity
    ```
    Jako ekran główny LinarTV otwiera się po włączeniu telewizora i po wybudzeniu z czuwania. Na urządzeniach ze zwykłym Androidem (np. projektory) widać go też na liście zwykłych aplikacji.
+
+   **Google TV (Chromecast z Google TV, Homatics i podobne):**
+   - Jeśli instalacja jest blokowana jako szkodliwa (Play Protect), wybierz *Więcej szczegółów → Zainstaluj mimo to* albo na chwilę wyłącz skanowanie Play Protect i włącz je po instalacji.
+   - Google TV otwiera własny launcher, nawet gdy powyższe polecenie zwróci `Success`. Aby LinarTV był ekranem głównym, wyłącz launcher Google TV (na własną odpowiedzialność; opiekun jeszcze tego nie testował):
+     ```text
+     adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
+     ```
+     Przywrócenie: `adb shell pm enable com.google.android.apps.tv.launcherx`. Wymagana wersja LinarTV 1.0.1 lub nowsza.
 
 Plik `LinarTV.apk` możesz też pobrać bezpośrednio z [Releases](https://github.com/domlin92/linartv-launcher-open/releases/latest).
 

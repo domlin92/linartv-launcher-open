@@ -30,13 +30,25 @@ Work step by step and tell the user what each step does. Ask before every step t
    ```bash
    adb shell cmd package set-home-activity --user 0 io.github.domlin92.linartv.open/com.linart.tvpreview.DashboardActivity
    ```
-   Some TVs (e.g. Philips/Google TV) keep returning to the stock launcher. Disabling it is possible, but **only after the user agrees** and after you have written down the restore commands:
+   Many devices keep returning to the stock launcher even after `set-home-activity` prints `Success`. Disabling the stock launcher is possible, but **only after the user agrees** and after you have written down the restore commands. First find out which launcher the device uses:
    ```bash
-   adb shell pm disable-user --user 0 com.google.android.tvlauncher      # stock launcher on many Android TVs
+   adb shell cmd package resolve-activity -c android.intent.category.HOME
+   ```
+   **Android TV** (e.g. Philips Android TV, many boxes):
+   ```bash
+   adb shell pm disable-user --user 0 com.google.android.tvlauncher
    # restore:
    adb shell pm enable com.google.android.tvlauncher
    adb shell cmd package set-home-activity --user 0 com.google.android.tvlauncher/.MainActivity
    ```
+   **Google TV** (e.g. Chromecast with Google TV, Homatics, newer TVs) uses a different launcher package, so the command above does nothing there:
+   ```bash
+   adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
+   # restore:
+   adb shell pm enable com.google.android.apps.tv.launcherx
+   ```
+   The Google TV steps have not been tested by the maintainer yet; tell the user so. LinarTV 1.0.1 or newer is required (1.0.0 cannot be a home screen).
+   **Play Protect:** on Google TV the APK may be blocked as "harmful" because it does not come from the Play Store. The user can choose *More details → Install anyway*, or temporarily turn off Play Protect scanning and turn it back on afterwards. `adb install` is usually not blocked.
    Never run `pm uninstall` on system packages and never disable packages you have not identified with `adb shell cmd package resolve-activity -c android.intent.category.HOME`.
 6. **First run:** the wizard asks for one or two clubs and the dock apps. Weather city is in Settings → Weather. Spotify "now playing" needs notification access (Settings → Spotify), see [docs/SPOTIFY.md](docs/SPOTIFY.md).
 
@@ -68,7 +80,12 @@ Pracuj krok po kroku i mów użytkownikowi, co robi każdy krok. Pytaj przed ka�
    adb install -r LinarTV.apk
    ```
 4. **Uruchomienie:** `adb shell am start -n io.github.domlin92.linartv.open/com.linart.tvpreview.DashboardActivity`
-5. **Ustawienie jako ekran główny (opcjonalnie, zapytaj najpierw).** Najlepiej przez ustawienie telewizora (*Ekran główny* / *Domyślna aplikacja ekranu głównego*), jeśli istnieje. W przeciwnym razie użyj `cmd package set-home-activity` (jak w części angielskiej). Wyłączenie fabrycznego launchera (`pm disable-user`) tylko za zgodą użytkownika i po zapisaniu poleceń przywracających. Nigdy nie używaj `pm uninstall` na pakietach systemowych.
+5. **Ustawienie jako ekran główny (opcjonalnie, zapytaj najpierw).** Najlepiej przez ustawienie telewizora (*Ekran główny* / *Domyślna aplikacja ekranu głównego*), jeśli istnieje. W przeciwnym razie użyj `cmd package set-home-activity` (jak w części angielskiej). Wiele urządzeń mimo `Success` wraca do fabrycznego launchera. Wyłączenie go (`pm disable-user`) tylko za zgodą użytkownika i po zapisaniu poleceń przywracających. Najpierw sprawdź launcher poleceniem `resolve-activity` (jak w części angielskiej):
+   - **Android TV:** `com.google.android.tvlauncher`,
+   - **Google TV** (Chromecast z Google TV, Homatics, nowsze TV): `com.google.android.apps.tv.launcherx`; przywrócenie: `adb shell pm enable com.google.android.apps.tv.launcherx`. Kroków dla Google TV opiekun jeszcze nie testował — powiedz o tym użytkownikowi. Wymagana wersja LinarTV 1.0.1 lub nowsza.
+   - **Play Protect:** na Google TV APK spoza Sklepu Play może zostać zablokowany jako „szkodliwy”. Użytkownik może wybrać *Więcej szczegółów → Zainstaluj mimo to* albo na chwilę wyłączyć skanowanie Play Protect i potem je włączyć. `adb install` zwykle nie jest blokowany.
+
+   Nigdy nie używaj `pm uninstall` na pakietach systemowych.
 6. **Pierwsze uruchomienie:** kreator pyta o kluby i aplikacje w docku. Miasto pogody: Ustawienia → Pogoda. Spotify wymaga dostępu do powiadomień ([docs/SPOTIFY.md](docs/SPOTIFY.md)).
 
 ### Zasady przy zmianach w kodzie
