@@ -15,7 +15,7 @@ LinarTV to ekran główny (launcher) dla Android TV z myślą o kibicach polskie
 - **Pogoda** dla wybranego miasta na świecie: bieżąca temperatura i prognoza godzinowa. Kliknięcie kafelka otwiera szczegóły: 7 dni, warunki teraz (wiatr, wilgotność, ciśnienie, opad), Słońce i fazę Księżyca. Dane odświeżają się co 30 minut. Wschód i zachód Słońca pochodzą z Open-Meteo, faza Księżyca jest liczona w aplikacji.
 - **Terminarz jednego lub dwóch klubów** z Ekstraklasy, I ligi, II ligi, dowolnej grupy III ligi lub IV ligi (16 grup wojewódzkich). Karta pokazuje rozgrywki i kolejkę, rywala, herby, datę i godzinę (gdy jest potwierdzona) oraz czerwony **LIVE** w trakcie meczu. Kliknięcie karty przełącza między najbliższym a następnym meczem. Terminarze odświeżają się raz dziennie.
 - **Układ:** przy dwóch klubach pogoda i dwie karty meczów stoją w jednym rzędzie. Przy jednym klubie pogoda i karta meczu są ułożone jedna nad drugą po prawej stronie.
-- **Pasek narzędzi:** Oglądaj telewizję, Źródła (wejścia HDMI i tuner TV) oraz Ustawienia.
+- **Pasek narzędzi:** Oglądaj telewizję, Źródła (wejścia HDMI i tuner TV) oraz Ustawienia. Obok nich, w prawym górnym rogu, widżet pamięci RAM pokazujący zajęte / całe RAM (np. „1,4 GB / 2,0 GB”). Gdy ukryjesz widżet lub któryś guzik, pozostałe wyrównują się do prawej.
 
 #### Dock i aplikacje
 - Dock z ulubionymi aplikacjami pokazuje ich oryginalne banery. Przy mniej niż 4 aplikacjach kafelki są wyśrodkowane.
@@ -28,9 +28,9 @@ LinarTV to ekran główny (launcher) dla Android TV z myślą o kibicach polskie
 | Kafelek | Co robi |
 |---|---|
 | Zamknij aplikacje | Prosi system o zamknięcie nieaktywnych aplikacji w tle; nie dotyka launchera ani usług systemowych |
-| Tapety | Galeria tapet, w tym zdjęcia z telefonu przez QR kod i domowe Wi-Fi (6-cyfrowy kod, limit prób) |
+| Widoczność przycisków | Ukrywa widżet RAM, Oglądaj telewizję i Źródła; pozostałe elementy przesuwają się do prawej |
 | Wygaszacz | Pokaz Twoich zdjęć po wybranym czasie bezczynności (domyślnie 5 min) |
-| Wygląd launchera | Automatycznie (dzień 08:00–19:59, noc 20:00–07:59), zawsze jasny, zawsze ciemny, własne godziny |
+| Wygląd launchera | Automatycznie (dzień 08:00–19:59, noc 20:00–07:59), zawsze jasny, zawsze ciemny, własne godziny oraz galeria tapet (w tym zdjęcia z telefonu przez QR kod i domowe Wi-Fi: 6-cyfrowy kod, limit prób) |
 | Pogoda | Wybór miasta (dowolny kraj) i jednostki (°C lub °F) |
 | Kalendarze | Kreator „Twoje kluby” (liga → klub, dla IV ligi liga → województwo → klub; jeden lub dwa) oraz „Odśwież teraz” |
 
@@ -169,7 +169,7 @@ LinarTV is a home screen (launcher) for Android TV built for Polish football fan
 - **Weather** for a chosen city anywhere in the world: current temperature and hourly forecast. Clicking the tile opens details: 7 days, current conditions (wind, humidity, pressure, precipitation), sun and moon phase. Refreshed every 30 minutes. Sunrise and sunset come from Open-Meteo; the moon phase is computed by the app.
 - **Fixtures of one or two clubs** from Ekstraklasa, I liga, II liga, any III liga group or IV liga (16 regional groups). The card shows competition and round, opponent, crests, date and kick-off time (when confirmed) and a red **LIVE** during the match. Clicking the card switches between the next and the following match. Fixtures refresh once a day.
 - **Layout:** with two clubs, weather and both match cards share one row; with one club, weather and the match card are stacked on the right.
-- **Toolbar:** Watch TV, Inputs (HDMI and TV tuner) and Settings.
+- **Toolbar:** Watch TV, Inputs (HDMI and TV tuner) and Settings. Next to them, in the top-right corner, a RAM widget shows used / total memory (e.g. "1.4 GB / 2.0 GB"). When you hide the widget or one of the buttons, the rest align to the right.
 
 **Dock and apps**
 - The dock shows favourite apps with their original banners; with fewer than 4 apps the tiles are centred.
@@ -183,9 +183,9 @@ LinarTV is a home screen (launcher) for Android TV built for Polish football fan
 | Tile | What it does |
 |---|---|
 | Close apps | Asks Android to stop inactive background apps; never touches the launcher or system services |
-| Wallpapers | Wallpaper gallery, including phone photos via QR code over home Wi-Fi (6-digit code, attempt limit) |
+| Buttons visibility | Hides the RAM widget, Watch TV and Inputs; the remaining items move to the right |
 | Screensaver | Slideshow of your photos after the chosen idle time (5 min by default) |
-| Launcher appearance | Automatic (day 08:00–19:59, night 20:00–07:59), always light, always dark, custom hours |
+| Launcher appearance | Automatic (day 08:00–19:59, night 20:00–07:59), always light, always dark, custom hours, plus the wallpaper gallery (including phone photos via QR code over home Wi-Fi: 6-digit code, attempt limit) |
 | Weather | City (any country) and unit (°C or °F) |
 | Calendars | "Your clubs" wizard (league → club, for IV liga league → region → club; one or two) and "Refresh now" |
 

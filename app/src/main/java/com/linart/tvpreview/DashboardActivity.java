@@ -366,6 +366,8 @@ public final class DashboardActivity extends Activity {
         dashboardVisible = true;
         handler.removeCallbacks(updateTime);
         updateTime.run();
+        handler.removeCallbacks(ramMeterTick);
+        handler.post(ramMeterTick);
         scheduleNextMatchBoundary();
         resetScreensaverTimer();
     }
@@ -375,6 +377,7 @@ public final class DashboardActivity extends Activity {
         dashboardVisible = false;
         handler.removeCallbacks(updateTime);
         handler.removeCallbacks(updateMatchCards);
+        handler.removeCallbacks(ramMeterTick);
         handler.removeCallbacks(startScreensaver);
         hideScreensaver();
         super.onPause();
@@ -701,12 +704,8 @@ public final class DashboardActivity extends Activity {
         clock = text("", 144, Color.WHITE, false, 60, 26, 590, 161);
         date = text("", 37, Color.WHITE, false, 62, 189, 610, 55);
 
+        buildToolbar();
         renderSpotifyBar();
-        circleAction(R.drawable.ic_toolbar_television, tr("Oglądaj telewizję", "Watch TV"), 1338,
-                () -> launch("org.droidtv.playtv"));
-        circleAction(R.drawable.ic_toolbar_sources, tr("Źródła", "Inputs"), 1438, this::showSources);
-        circleAction(R.drawable.ic_toolbar_settings, tr("Ustawienia", "Settings"), 1538,
-                this::showPublicSettings);
         renderUpdateBar();
 
         boolean singleColumn = !clubTwoCalendar.configured();
@@ -781,8 +780,6 @@ public final class DashboardActivity extends Activity {
                 R.drawable.ic_toolbar_cleanup, this::closeBackgroundApps);
         settingsFocusable(cleanup).setContentDescription(
                 tr("Zamknij aplikacje działające w tle", "Close background apps"));
-        View wallpapers = settingsTile(tr("Tapety", "Wallpapers"), R.drawable.ic_toolbar_gallery,
-                this::showWallpaperGallery);
         View screensaver = settingsTile(tr("Wygaszacz", "Screensaver"),
                 R.drawable.ic_settings_screensaver, this::showScreensaverSettings);
         View appearance = settingsTile(tr("Wygląd launchera", "Launcher appearance"),
@@ -791,15 +788,17 @@ public final class DashboardActivity extends Activity {
                 this::showWeatherSettings);
         View calendars = settingsTile(tr("Kalendarze", "Calendars"),
                 R.drawable.ic_settings_calendar, this::showCalendarSettings);
+        View buttons = settingsTile(tr("Widoczność przycisków", "Buttons visibility"),
+                R.drawable.ic_settings_visibility, this::showButtonsVisibility);
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         grid.setClipChildren(false);
         grid.setClipToPadding(false);
         content.addView(grid, new LinearLayout.LayoutParams(-1, 0, 1));
-        addSettingsRow(grid, cleanup, wallpapers);
+        addSettingsRow(grid, cleanup, buttons);
         addSettingsRow(grid, screensaver, appearance);
         addSettingsRow(grid, weather, calendars);
-        linkSettingsGrid(cleanup, wallpapers, screensaver, appearance, weather, calendars);
+        linkSettingsGrid(cleanup, buttons, screensaver, appearance, weather, calendars);
 
 
         // System values belong only to this overview, never to the submenus.
@@ -1070,11 +1069,116 @@ public final class DashboardActivity extends Activity {
                 : prefs.contains("day_start_minute") || prefs.contains("night_start_minute") ? 3 : 0;
         showChoiceDialog(tr("Wygląd launchera", "Launcher appearance"), new String[]{
                 tr("Automatycznie", "Automatic"), tr("Zawsze jasny", "Always light"),
-                tr("Zawsze ciemny", "Always dark"), tr("Własne godziny", "Custom schedule")}, current, which -> {
+                tr("Zawsze ciemny", "Always dark"), tr("Własne godziny", "Custom schedule"),
+                tr("Tapety", "Wallpapers")}, current, which -> {
             if (which == 3) { showAppearanceSchedule(); return; }
+            if (which == 4) { showWallpaperGallery(); return; }
             getPreferences(MODE_PRIVATE).edit().putString("appearance_mode", new String[]{"auto", "light", "dark"}[which]).apply();
             applyVisualSettingsNow();
         });
+    }
+
+    /**
+     * Which top-right items stay on the dashboard. The rest of the group keeps hugging the right
+     * edge, so hiding one button never leaves a hole.
+     */
+    private void showButtonsVisibility() {
+        final SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout content = popupContent();
+        popupTitle(content, tr("Widoczność przycisków", "Buttons visibility"));
+        popupDescription(content, tr("Zaznacz elementy widoczne w prawym górnym rogu. "
+                        + "Ukryte znikają, a pozostałe przesuwają się do prawej.",
+                "Tick the items shown in the top-right corner. Hidden ones disappear "
+                        + "and the rest move to the right."));
+        String[] keys = {"toolbar_ram", "toolbar_watch_tv", "toolbar_inputs"};
+        int[] icons = {R.drawable.ic_settings_visibility, R.drawable.ic_toolbar_television,
+                R.drawable.ic_toolbar_sources};
+        String[] labels = {tr("Pamięć RAM", "RAM"), tr("Oglądaj telewizję", "Watch TV"),
+                tr("Źródła", "Inputs")};
+        View first = null;
+        final boolean[] changed = {false};
+        for (int i = 0; i < keys.length; i++) {
+            View row = visibilityRow(labels[i], icons[i], keys[i], prefs, changed);
+            View focusable = ((ViewGroup) row).getChildAt(1);
+            if (first == null) first = focusable;
+            addSettingsControl(content, row, 64);
+        }
+        TextView close = setupButton(tr("Zamknij", "Close"));
+        close.setGravity(Gravity.CENTER);
+        close.setOnClickListener(v -> dialog.dismiss());
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(px(150), px(54));
+        closeParams.gravity = Gravity.END;
+        content.addView(close, closeParams);
+        watchFit(content);
+        dialog.setContentView(content);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        // The dashboard sits behind the blurred backdrop, so one rebuild when the panel closes.
+        showDialogWithBlur(dialog, () -> { if (changed[0]) applyVisualSettingsNow(); });
+        dialog.getWindow().setLayout(px(820), -2);
+        if (first != null) first.requestFocus();
+    }
+
+    /** One switchable line of the "Buttons visibility" panel: icon, name and a tick. */
+    private View visibilityRow(String label, int icon, String key, SharedPreferences prefs,
+                               boolean[] changed) {
+        FrameLayout wrap = new FrameLayout(this);
+        wrap.setClipChildren(false);
+        View glow = new View(this);
+        glow.setBackground(new AppGlowDrawable(13, false));
+        glow.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        glow.setAlpha(0f);
+        FrameLayout.LayoutParams glowParams = new FrameLayout.LayoutParams(-1, -1);
+        glowParams.setMargins(-px(16), -px(16), -px(16), -px(16));
+        wrap.addView(glow, glowParams);
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(px(20), 0, px(20), 0);
+        row.setFocusable(true);
+        row.setFocusableInTouchMode(true);
+        row.setClickable(true);
+        ImageView glyph = new ImageView(this);
+        glyph.setImageResource(icon);
+        row.addView(glyph, new LinearLayout.LayoutParams(px(32), px(32)));
+        TextView name = new TextView(this);
+        name.setText(label);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(21));
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1);
+        nameParams.leftMargin = px(18);
+        row.addView(name, nameParams);
+        TextView tick = new TextView(this);
+        tick.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(22));
+        tick.setGravity(Gravity.CENTER);
+        row.addView(tick, new LinearLayout.LayoutParams(px(36), -2));
+        final boolean[] focusedNow = {false};
+        final Runnable paint = () -> {
+            boolean visible = prefs.getBoolean(key, true);
+            int color = focusedNow[0] ? (night ? 0xFF152849 : Color.WHITE) : ink;
+            name.setTextColor(color);
+            glyph.setColorFilter(color);
+            tick.setText(visible ? "✓" : "–");
+            tick.setTextColor(visible ? color : muted);
+            row.setContentDescription(label + ", "
+                    + (visible ? tr("widoczne", "visible") : tr("ukryte", "hidden")));
+        };
+        row.setOnFocusChangeListener((v, focused) -> {
+            focusedNow[0] = focused;
+            showTileGlow(glow, focused);
+            row.setBackground(shape(focused ? (night ? 0xFFF0F6FF : 0xFF244574)
+                    : (night ? 0xFF344B72 : Color.WHITE), Color.TRANSPARENT, 13));
+            paint.run();
+        });
+        row.setOnClickListener(v -> {
+            prefs.edit().putBoolean(key, !prefs.getBoolean(key, true)).apply();
+            changed[0] = true;
+            paint.run();
+        });
+        row.setBackground(shape(night ? 0xFF344B72 : Color.WHITE, Color.TRANSPARENT, 13));
+        paint.run();
+        wrap.addView(row, new FrameLayout.LayoutParams(-1, -1));
+        return wrap;
     }
 
     private void showAppearanceSchedule() {
@@ -2103,7 +2207,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         spotifyBar.setFocusable(true);
         spotifyBar.setClickable(true);
         spotifyBar.setOnClickListener(v -> launch("com.spotify.tv.android"));
-        View glow = tileGlow(430, 45, 880, 76, 24);
+        int w = topBarWidth();
+        View glow = tileGlow(430, 45, w, 76, 24);
         spotifyBar.setOnFocusChangeListener((v, focused) -> showTileGlow(glow, focused));
         spotifyCover = new ImageView(this);
         spotifyCover.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -2112,11 +2217,16 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         cover.leftMargin = px(8); cover.topMargin = px(8);
         spotifyBar.addView(spotifyCover, cover);
         spotifyTitle = new NowPlayingTicker(this, px(30), ink);
-        FrameLayout.LayoutParams title = new FrameLayout.LayoutParams(px(770), -1);
+        FrameLayout.LayoutParams title = new FrameLayout.LayoutParams(px(w - 90), -1);
         title.leftMargin = px(84);
         spotifyBar.addView(spotifyTitle, title);
-        place(spotifyBar, 430, 45, 880, 76);
+        place(spotifyBar, 430, 45, w, 76);
         updateSpotifyBar();
+    }
+
+    /** Width of the Spotify/update bar: it stops before the top-right group. */
+    private int topBarWidth() {
+        return Math.max(560, toolbarLeft - 28 - 430);
     }
 
     private void updateSpotifyBar() {
@@ -2166,7 +2276,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         // A small green dot on the settings button stays until the update is installed.
         updateDot = new View(this);
         updateDot.setBackground(shape(0xFF2FBF5B, night ? 0xFF142548 : 0xFFF5F2EA, 9));
-        place(updateDot, 1538 + 56, 47, 18, 18);
+        place(updateDot, settingsX + 56, 47, 18, 18);
         if (AppUpdates.postponed(this, release)) { updateSpotifyBar(); return; }
         updateBar = new FrameLayout(this);
         updateBar.setBackground(shape(panel, outline, 24));
@@ -2190,7 +2300,10 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         label.setSingleLine(true);
         label.setGravity(Gravity.CENTER_VERTICAL);
         label.setAutoSizeTextTypeUniformWithConfiguration(px(18), px(26), 1, TypedValue.COMPLEX_UNIT_PX);
-        FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(px(470), -1);
+        int barW = topBarWidth();
+        // Never reach the Later/Update buttons on the right of the bar.
+        FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(
+                px(Math.min(470, Math.max(240, barW - 421))), -1);
         labelParams.leftMargin = px(84);
         updateBar.addView(label, labelParams);
         TextView later = setupButton(tr("Później", "Later"));
@@ -2208,7 +2321,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             renderUpdateBar();
         });
         update.setOnClickListener(v -> downloadUpdate(release));
-        place(updateBar, 430, 45, 880, 76);
+        place(updateBar, 430, 45, barW, 76);
         updateSpotifyBar();
     }
 
@@ -2284,6 +2397,107 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                     "Allow LinarTV notification access in system settings. Only the Spotify session is read; notifications are not stored."));
             openSettings("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS");
         });
+    }
+
+    /** Right edge of the Settings button; the whole top-right group is packed against it. */
+    private static final int TOOLBAR_RIGHT = 1614;
+    private static final int TOOLBAR_SIZE = 76;
+    /** Button plus the gap to the next one. */
+    private static final int TOOLBAR_PITCH = 100;
+    private static final long RAM_REFRESH_MS = 10_000;
+
+    private TextView ramUsed, ramTotal;
+    private View ramButton;
+    private int settingsX = TOOLBAR_RIGHT - TOOLBAR_SIZE;
+    /** Left edge of the top-right group; the Spotify and update bars stop short of it. */
+    private int toolbarLeft = 1338;
+
+    private final Runnable ramMeterTick = new Runnable() {
+        @Override public void run() {
+            if (ramUsed == null || !dashboardVisible) return;
+            refreshRamMeter();
+            handler.postDelayed(this, RAM_REFRESH_MS);
+        }
+    };
+
+    /**
+     * Top-right corner: the RAM readout and the two shortcuts sit left of Settings and are packed
+     * against it, so hiding one of them leaves no gap (see "Buttons visibility").
+     */
+    private void buildToolbar() {
+        SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        boolean ram = prefs.getBoolean("toolbar_ram", true);
+        boolean watchTv = prefs.getBoolean("toolbar_watch_tv", true);
+        boolean inputs = prefs.getBoolean("toolbar_inputs", true);
+        // Dropped views: the meter tick stops by itself when there is nothing to update.
+        ramUsed = null;
+        ramTotal = null;
+        ramButton = null;
+        int slots = 1 + (ram ? 1 : 0) + (watchTv ? 1 : 0) + (inputs ? 1 : 0);
+        int x = TOOLBAR_RIGHT - TOOLBAR_SIZE - (slots - 1) * TOOLBAR_PITCH;
+        toolbarLeft = x;
+        if (ram) {
+            ramWidget(x);
+            x += TOOLBAR_PITCH;
+        }
+        if (watchTv) {
+            circleAction(R.drawable.ic_toolbar_television, tr("Oglądaj telewizję", "Watch TV"), x,
+                    () -> launch("org.droidtv.playtv"));
+            x += TOOLBAR_PITCH;
+        }
+        if (inputs) {
+            circleAction(R.drawable.ic_toolbar_sources, tr("Źródła", "Inputs"), x, this::showSources);
+            x += TOOLBAR_PITCH;
+        }
+        settingsX = x;
+        circleAction(R.drawable.ic_toolbar_settings, tr("Ustawienia", "Settings"), x,
+                this::showPublicSettings);
+        handler.removeCallbacks(ramMeterTick);
+        if (ram) handler.post(ramMeterTick);
+    }
+
+    /** RAM readout drawn in the same shape as the toolbar buttons: used over "/ total". */
+    private void ramWidget(int x) {
+        FrameLayout button = new FrameLayout(this);
+        place(button, x, 45, TOOLBAR_SIZE, TOOLBAR_SIZE);
+        button.setBackground(shape(panel, outline, 38));
+        LinearLayout lines = new LinearLayout(this);
+        lines.setOrientation(LinearLayout.VERTICAL);
+        lines.setGravity(Gravity.CENTER);
+        ramUsed = new TextView(this);
+        ramUsed.setTextColor(ink);
+        ramUsed.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(15));
+        ramUsed.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        ramUsed.setGravity(Gravity.CENTER);
+        ramUsed.setSingleLine(true);
+        ramTotal = new TextView(this);
+        ramTotal.setTextColor(muted);
+        ramTotal.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(11));
+        ramTotal.setGravity(Gravity.CENTER);
+        ramTotal.setSingleLine(true);
+        lines.addView(ramUsed);
+        lines.addView(ramTotal);
+        FrameLayout.LayoutParams linesParams = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
+        linesParams.setMargins(px(6), 0, px(6), 0);
+        button.addView(lines, linesParams);
+        ramButton = button;
+        refreshRamMeter();
+    }
+
+    private void refreshRamMeter() {
+        if (ramUsed == null) return;
+        ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        if (manager == null) return;
+        ActivityManager.MemoryInfo memory = new ActivityManager.MemoryInfo();
+        manager.getMemoryInfo(memory);
+        String used = android.text.format.Formatter.formatShortFileSize(this,
+                Math.max(0, memory.totalMem - memory.availMem));
+        String total = android.text.format.Formatter.formatShortFileSize(this, memory.totalMem);
+        // "1.4 GB" over "/ 2.0 GB" fits the round button; the unit stays on the total line only.
+        ramUsed.setText(used);
+        ramTotal.setText("/ " + total);
+        if (ramButton != null) ramButton.setContentDescription(
+                tr("Pamięć RAM: ", "RAM: ") + used + " / " + total);
     }
 
     private void circleAction(int icon, String description, int x, Runnable click) {
