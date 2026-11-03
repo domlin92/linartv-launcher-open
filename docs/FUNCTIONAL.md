@@ -20,7 +20,8 @@ LinarTV to ekran główny (launcher) dla Android TV z myślą o kibicach polskie
 #### Dock i aplikacje
 - Dock z ulubionymi aplikacjami pokazuje ich oryginalne banery. Przy mniej niż 4 aplikacjach kafelki są wyśrodkowane.
 - **Przytrzymanie OK na kafelku** otwiera menu: Zamień aplikację, Przesuń (strzałki ◀ ▶ przestawiają kafelek, OK zapisuje, Wstecz anuluje), Edytuj cały dock, Usuń z docka.
-- **Szuflada aplikacji**: strzałka w dół pod dockiem otwiera listę wszystkich aplikacji.
+- **Własna ikona:** w menu przytrzymania OK na kafelku → „Własna ikona” otwiera wbudowany w launcher wybór obrazu: listę folderu **Pobrane** (także podfoldery). Obsługiwane formaty: PNG, JPG, JPEG, WEBP i SVG (wektor jest renderowany). Kolor tła wybiera się z palety **RYB** — 12 kolorów w jednym rzędzie, od czerwieni przez żółty do błękitu i fioletu. Skalę ikony regulują przyciski Powiększ/Zmniejszy. Obraz i kolor zapisują się na urządzeniu; dostęp do Pobranych launcher prosi raz, przy pierwszym wyborze (albo otwiera systemowy wybór pliku, gdy odmówisz).
+- **Szuflada aplikacji**: strzałka w dół pod dockiem otwiera listę wszystkich aplikacji. Lista zawiera wszystkie zainstalowane przez użytkownika aplikacje, także takie zaprojektowane z myślą o tabletach. Pierwszy rząd listy to aplikacje z docka: wejście strzałką w dół z kafelka 3 podświetla kafelek 3 na liście, wyjście w dół z kolumny 2 wraca na kafelek 2 w docku, a Wstecz (lub strzałka w górę z pierwszego rzędu) wraca na kafelek, z którego listę otwarto. Wybrany kafelek (w docku i na liście) jest wyraźnie powiększony, ma tę samą poświatę co karty meczu i pogody (bez cienia) oraz cienką 2 px ramkę: czarną przy jasnej aplikacji, białą przy ciemnej.
 - **Odtwarzana muzyka:** gdy gra Spotify, pasek pokazuje tytuł utworu.
 
 #### Ustawienia (zębatka)
@@ -173,7 +174,8 @@ LinarTV is a home screen (launcher) for Android TV built for Polish football fan
 **Dock and apps**
 - The dock shows favourite apps with their original banners; with fewer than 4 apps the tiles are centred.
 - **Hold OK on a tile** for: Replace app, Move (◀ ▶ move the tile, OK saves, Back cancels), Edit the whole dock, Remove from dock.
-- **App drawer:** the down arrow below the dock opens all apps.
+- **Custom icon:** hold OK on a tile → "Custom icon" opens the launcher's own image picker: a list of the **Download** folder (subfolders included). Supported formats: PNG, JPG, JPEG, WEBP and SVG (vectors are rendered). The tile colour comes from an **RYB** palette — 12 colours in one row, from red through yellow and blue to violet. Enlarge/Shrink adjusts the icon scale. The image and colour are saved on the device; access to Download is asked once, on the first pick (if you decline, the system file picker opens instead).
+- **App drawer:** the down arrow below the dock opens all apps. The list shows all user-installed apps, including ones meant for tablets. The first row repeats the dock apps: pressing Down from dock tile 3 highlights tile 3 in the list, pressing Down out of column 2 returns to dock tile 2, and Back (or Up out of the first row) returns to the tile the list was opened from. The selected tile (in the dock and in the list) is clearly enlarged, uses the same aura as the match and weather cards (no shadow), and gets a thin 2 px frame: black for a light app, white for a dark one.
 - **Now playing:** while Spotify plays, the strip shows the track.
 
 **Settings (gear)**

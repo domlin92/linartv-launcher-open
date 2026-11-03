@@ -14,12 +14,15 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.content.SharedPreferences;
@@ -61,7 +64,9 @@ import java.net.URL;
 import java.io.InputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import com.google.zxing.BarcodeFormat;
@@ -69,6 +74,7 @@ import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
+import com.caverock.androidsvg.SVG;
 
 /** A safe, native TV preview. It intentionally does not claim the Android HOME intent. */
 public final class DashboardActivity extends Activity {
@@ -97,6 +103,21 @@ public final class DashboardActivity extends Activity {
     private static final int DOCK_SIZE = 4;
     private static final int DOCK_TILE_WIDTH = 340, DOCK_GAP = 66;
     private static final int DOCK_SPAN = DOCK_SIZE * DOCK_TILE_WIDTH + (DOCK_SIZE - 1) * DOCK_GAP;
+    /**
+     * Tile background colours from the RYB (red-yellow-blue) wheel: the three primaries, their
+     * secondaries and the six tertiaries in between, so neighbouring hues stand next to each other
+     * and the whole wheel fits in one row.
+     */
+    private static final int[] CUSTOM_ICON_BACKGROUNDS = {
+            0xFFE03B3B, 0xFFEE6A2C, 0xFFF2911F, 0xFFF2B622, 0xFFEFD22B, 0xFFA9C63C,
+            0xFF3F9E57, 0xFF1E9C8C, 0xFF2E6FB5, 0xFF5257B8, 0xFF7A3E9D, 0xFFB03A74
+    };
+    /** Image types the built-in picker offers; every picked image is stored as PNG. */
+    private static final String[] CUSTOM_ICON_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg"};
+    /** Longest side kept when a picked image is stored for a dock tile. */
+    private static final int CUSTOM_ICON_MAX_PX = 512;
+    /** Refuse absurdly large files instead of risking an out-of-memory while decoding. */
+    private static final long CUSTOM_ICON_MAX_BYTES = 16L * 1024 * 1024;
     /** Launchable system entries that are not apps a person would pin to the dock. */
     private static final java.util.Set<String> HIDDEN_APP_PACKAGES = new HashSet<>(java.util.Arrays.asList(
             "org.droidtv.playtv", "org.droidtv.eum", "org.droidtv.channels", "org.droidtv.contentexplorer",
@@ -134,10 +155,19 @@ public final class DashboardActivity extends Activity {
     private List<String> dockMoveBackup;
     private boolean suppressDockKeyUp;
     private TextView dockMoveHint;
+    private final HashMap<String, Bitmap> customIconCache = new HashMap<>();
+    private String customIconPkg;
+    private int customIconDockIndex = -1;
+    private ImageView customIconPreview;
+    private Runnable customIconPreviewRefresh;
+    private Dialog customIconDialog;
+    private Runnable afterStoragePermission;
     private boolean firstRunSetup;
     private final List<List<View>> extraAppRows = new ArrayList<>();
     private int drawerFocusRow;
     private int drawerFocusColumn;
+    /** Dock tile the list was opened from; survives the focus hand-over that happens on open. */
+    private int drawerReturnColumn = -1;
     private final List<View> suspendedFocusables = new ArrayList<>();
     private FrameLayout drawerBackdrop;
     private ImageView drawerBlurImage;
@@ -648,6 +678,7 @@ public final class DashboardActivity extends Activity {
         dockGlows.clear();
         appDrawerOpen = false;
         lastDockFocus = null;
+        drawerReturnColumn = -1;
         night = isNight();
         ink = night ? Color.WHITE : 0xFF15223E;
         muted = night ? 0xFFC6D1E4 : 0xFF34435B;
@@ -1668,6 +1699,9 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     }
 
     private static final int REQUEST_MIC = 42;
+    private static final int REQUEST_CUSTOM_APP_ICON = 43;
+    /** Reading the Download folder for the built-in image picker (targetSdk 28 storage model). */
+    private static final int REQUEST_STORAGE = 44;
     private android.speech.SpeechRecognizer recognizer;
     private Runnable afterMicPermission;
 
@@ -1714,6 +1748,19 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == REQUEST_STORAGE) {
+            Runnable next = afterStoragePermission;
+            afterStoragePermission = null;
+            int index = customIconDockIndex;
+            if (results.length > 0 && results[0] == android.content.pm.PackageManager.PERMISSION_GRANTED && next != null) {
+                next.run();
+                return;
+            }
+            // Without storage access the built-in list cannot read Download; the system file
+            // picker needs no permission, so the person can still choose an image.
+            if (index >= 0) startSystemIconPicker(index);
+            return;
+        }
         if (requestCode != REQUEST_MIC) return;
         Runnable next = afterMicPermission;
         afterMicPermission = null;
@@ -1722,6 +1769,15 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CUSTOM_APP_ICON) {
+            String pkg = customIconPkg;
+            int index = customIconDockIndex;
+            customIconPkg = null;
+            customIconDockIndex = -1;
+            if (resultCode == RESULT_OK && data != null && data.getData() != null && pkg != null)
+                importCustomIcon(index, pkg, data.getData(), data.getType());
+            return;
+        }
         if (requestCode != REQUEST_VOICE) return;
         java.util.function.Consumer<List<String>> callback = voiceResult;
         voiceResult = null;
@@ -3334,7 +3390,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
 
     private void dockTile(String brand, String pkg, int x) {
         View glow = new View(this);
-        glow.setBackground(new AppGlowDrawable());
+        // Same aura the sport and weather cards use: outside the tile, not under it.
+        glow.setBackground(new AppGlowDrawable(32, true));
         glow.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         glow.setAlpha(0f);
         place(glow, x - 24, 743, 388, 164);
@@ -3346,10 +3403,22 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         card.setFocusableInTouchMode(true);
         card.setClickable(true);
         card.setContentDescription(brand);
-        card.setBackground(shape(TILE_BG, Color.TRANSPARENT, 32));
-        card.setClipToOutline(true);
-        Drawable artwork = null;
+        int tileFill = TILE_BG;
         if (pkg != null) {
+            int customColor = customIconColor(pkg);
+            if (customColor != -1) tileFill = customColor;
+        }
+        final int cardFill = tileFill;
+        card.setBackground(shape(cardFill, Color.TRANSPARENT, 32));
+        card.setClipToOutline(true);
+        Drawable custom = null;
+        if (pkg != null) {
+            // A picked custom icon wins over the launcher/banner artwork; the person keeps the
+            // default tile background colour until they choose their own.
+            custom = customArtwork(pkg);
+        }
+        Drawable artwork = custom;
+        if (artwork == null && pkg != null) {
             try {
                 artwork = getPackageManager().getApplicationBanner(pkg);
                 if (artwork == null) artwork = getPackageManager().getApplicationIcon(pkg);
@@ -3363,9 +3432,17 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         if (artwork != null) {
             ImageView icon = new ImageView(this);
             icon.setImageDrawable(artwork);
-            // Phone apps have only a square icon; keep it whole instead of cropping it.
-            icon.setScaleType(bannerArtwork ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
-            if (!bannerArtwork) icon.setPadding(px(20), px(14), px(20), px(14));
+            // Phone apps have only a square icon, and a picked image is whole by design;
+            // keep both uncropped instead of filling the tile edge to edge.
+            boolean crop = custom == null && bannerArtwork;
+            icon.setScaleType(crop ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
+            if (!crop) icon.setPadding(px(20), px(14), px(20), px(14));
+            if (custom != null) {
+                // Enlarge/Shrink zoom the icon itself; the tile clips what sticks out.
+                float scale = customIconScale(pkg);
+                icon.setScaleX(scale);
+                icon.setScaleY(scale);
+            }
             icon.setAlpha(0.93f);
             FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(-1, -1);
             card.addView(icon, iconParams);
@@ -3378,12 +3455,20 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             label.setGravity(Gravity.CENTER);
             card.addView(label, new FrameLayout.LayoutParams(-1, -1));
         }
-        card.setOnFocusChangeListener((view, focused) -> {
-            if (focused) lastDockFocus = card;
-            if (dockMoveIndex < 0) setAppTileFocus(card, glow, focused);
-        });
         card.setOnClickListener(view -> {
             if (pkg == null) showDockEditor(false); else launch(pkg);
+        });
+        // Drawn above the artwork: a full-bleed banner would otherwise cover the tile background.
+        final View frame = tileFrame(tileFrameColor(cardFill, artwork));
+        card.addView(frame, new FrameLayout.LayoutParams(-1, -1));
+        card.setOnFocusChangeListener((view, focused) -> {
+            // While the list is open its tiles take focus; ignore the background hand-over that
+            // happens when the dock is suspended, so the remembered tile cannot drift.
+            if (focused && !appDrawerOpen) lastDockFocus = card;
+            if (dockMoveIndex < 0) {
+                setAppTileFocus(card, glow, focused);
+                frame.setVisibility(focused ? View.VISIBLE : View.INVISIBLE);
+            }
         });
         if (pkg != null) {
             card.setLongClickable(true);
@@ -3456,7 +3541,9 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     private void refreshDock(int focusIndex) {
         applyVisualSettingsNow();
         handler.postDelayed(() -> {
-            if (!dockCards.isEmpty()) dockCards.get(Math.max(0, Math.min(focusIndex, dockCards.size() - 1))).requestFocus();
+            // A window opened meanwhile owns the focus; never steal it back.
+            if (popupOpen || dockCards.isEmpty()) return;
+            dockCards.get(Math.max(0, Math.min(focusIndex, dockCards.size() - 1))).requestFocus();
         }, 120);
     }
 
@@ -3466,13 +3553,16 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         if (index < 0 || index >= dockPackages.size()) return;
         List<String> labels = new ArrayList<>(java.util.Arrays.asList(
                 tr("Zamień aplikację", "Replace app"), tr("Przesuń", "Move"),
-                tr("Edytuj cały dock", "Edit the whole dock")));
-        if (dockPackages.size() > 1) labels.add(tr("Usuń z docku", "Remove from dock"));
+                tr("Własna ikona", "Custom icon"), tr("Edytuj cały dock", "Edit the whole dock")));
+        // The last app cannot be removed, so the entry only exists when there is something to keep.
+        final boolean canRemove = dockPackages.size() > 1;
+        if (canRemove) labels.add(tr("Usuń z docku", "Remove from dock"));
         showChoiceDialog(appLabel(dockPackages.get(index)), labels.toArray(new String[0]), choice -> {
             if (choice == 0) showDockReplace(index);
             else if (choice == 1) startDockMove(index);
-            else if (choice == 2) showDockEditor(false);
-            else {
+            else if (choice == 2) showDockIconSettings(index);
+            else if (choice == 3) showDockEditor(false);
+            else if (canRemove) {
                 List<String> next = new ArrayList<>(dockPackages);
                 next.remove(index);
                 saveDock(next);
@@ -3501,6 +3591,486 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             saveDock(next);
             refreshDock(index);
         });
+    }
+
+    // ---------- Custom icon for a dock entry ----------
+
+    private File customIconFile(String pkg) {
+        if (pkg == null) return null;
+        File folder = new File(getFilesDir(), "custom_icons");
+        if (!folder.exists() && !folder.mkdirs()) return null;
+        return new File(folder, pkg + ".png");
+    }
+
+    private Bitmap customIconBitmap(String pkg) {
+        Bitmap cached = customIconCache.get(pkg);
+        if (cached != null) return cached;
+        File file = customIconFile(pkg);
+        if (file == null || !file.isFile()) return null;
+        try (InputStream in = new FileInputStream(file)) {
+            Bitmap bitmap = BitmapFactory.decodeStream(in);
+            if (bitmap == null) return null;
+            customIconCache.put(pkg, bitmap);
+            return bitmap;
+        } catch (Exception ignored) { return null; }
+    }
+
+    private Drawable customArtwork(String pkg) {
+        if (pkg == null) return null;
+        Bitmap bitmap = customIconBitmap(pkg);
+        if (bitmap == null) return null;
+        // The size on screen comes from the tile's scale, not from resizing the bitmap:
+        // a fitted ImageView would shrink any bigger copy straight back.
+        return new BitmapDrawable(getResources(), bitmap);
+    }
+
+    private float customIconScale(String pkg) {
+        float scale = getPreferences(MODE_PRIVATE).getFloat("dock_icon_scale_" + pkg, -1f);
+        return scale <= 0 ? 1f : scale;
+    }
+
+    private void saveCustomIconScale(String pkg, float scale) {
+        getPreferences(MODE_PRIVATE).edit().putFloat("dock_icon_scale_" + pkg, scale).apply();
+    }
+
+    private void adjustCustomIconScale(String pkg, float delta) {
+        float current = customIconScale(pkg);
+        if (current < 0) current = 1f;
+        float next = Math.max(0.25f, Math.min(2f, current + delta));
+        if (next != current) saveCustomIconScale(pkg, next);
+    }
+
+    private void refreshCustomIconPreview(ImageView preview, String pkg) {
+        Drawable artwork = customArtwork(pkg);
+        if (artwork == null && pkg != null) {
+            try { artwork = getPackageManager().getApplicationIcon(pkg); }
+            catch (PackageManager.NameNotFoundException ignored) { }
+        }
+        preview.setImageDrawable(artwork);
+        float scale = customIconScale(pkg);
+        preview.setScaleX(scale);
+        preview.setScaleY(scale);
+    }
+
+    private int customIconColor(String pkg) {
+        return getPreferences(MODE_PRIVATE).getInt("dock_icon_color_" + pkg, -1);
+    }
+
+    private void saveCustomIconColor(String pkg, int color) {
+        getPreferences(MODE_PRIVATE).edit().putInt("dock_icon_color_" + pkg, color).apply();
+    }
+
+    private void clearCustomIcon(String pkg) {
+        File file = customIconFile(pkg);
+        if (file != null && file.isFile()) file.delete();
+        customIconCache.remove(pkg);
+        getPreferences(MODE_PRIVATE).edit()
+                .remove("dock_icon_color_" + pkg).remove("dock_icon_scale_" + pkg).apply();
+    }
+
+    /** Decodes any supported image into an icon bitmap, whatever its original format was. */
+    private Bitmap decodeIcon(File file) {
+        if (file == null || !file.isFile() || file.length() <= 0 || file.length() > CUSTOM_ICON_MAX_BYTES)
+            return null;
+        try {
+            if (file.getName().toLowerCase(Locale.ROOT).endsWith(".svg")) return renderSvgIcon(file);
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            try (InputStream in = new FileInputStream(file)) { BitmapFactory.decodeStream(in, null, bounds); }
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+            // Halve the size while decoding, so a phone photo never lands in memory at full size.
+            int sample = 1;
+            while (bounds.outWidth / (sample * 2) >= CUSTOM_ICON_MAX_PX
+                    || bounds.outHeight / (sample * 2) >= CUSTOM_ICON_MAX_PX) sample *= 2;
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = sample;
+            Bitmap bitmap;
+            try (InputStream in = new FileInputStream(file)) { bitmap = BitmapFactory.decodeStream(in, null, options); }
+            if (bitmap == null) return null;
+            int longest = Math.max(bitmap.getWidth(), bitmap.getHeight());
+            if (longest <= CUSTOM_ICON_MAX_PX) return bitmap;
+            float ratio = CUSTOM_ICON_MAX_PX / (float) longest;
+            return Bitmap.createScaledBitmap(bitmap, Math.max(1, Math.round(bitmap.getWidth() * ratio)),
+                    Math.max(1, Math.round(bitmap.getHeight() * ratio)), true);
+        } catch (Exception | OutOfMemoryError ignored) { return null; }
+    }
+
+    /** Vector icons are rendered at the size the file asks for, capped like the bitmaps. */
+    private Bitmap renderSvgIcon(File file) throws Exception {
+        SVG svg;
+        try (InputStream in = new FileInputStream(file)) { svg = SVG.getFromInputStream(in); }
+        if (svg == null) return null;
+        android.graphics.Picture base = svg.renderToPicture();
+        int width = base != null && base.getWidth() > 0 ? base.getWidth() : CUSTOM_ICON_MAX_PX;
+        int height = base != null && base.getHeight() > 0 ? base.getHeight() : CUSTOM_ICON_MAX_PX;
+        float ratio = Math.min(1f, CUSTOM_ICON_MAX_PX / (float) Math.max(width, height));
+        width = Math.max(1, Math.round(width * ratio));
+        height = Math.max(1, Math.round(height * ratio));
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        new Canvas(bitmap).drawPicture(svg.renderToPicture(width, height));
+        return bitmap;
+    }
+
+    private boolean saveCustomIconBitmap(String pkg, Bitmap bitmap) {
+        File target = customIconFile(pkg);
+        if (target == null || bitmap == null) return false;
+        File parent = target.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) return false;
+        try (OutputStream out = new FileOutputStream(target)) {
+            return bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+        } catch (Exception ignored) { return false; }
+    }
+
+    // ---------- Picking the image for a custom icon ----------
+
+    /** Download folder on this device, or the alternative some boxes use instead. */
+    private File downloadsFolder() {
+        File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        if (downloads != null && downloads.isDirectory()) return downloads;
+        File legacy = new File(Environment.getExternalStorageDirectory(), "Download");
+        return legacy.isDirectory() ? legacy : null;
+    }
+
+    private static boolean isIconImage(File file) {
+        String name = file.getName().toLowerCase(Locale.ROOT);
+        for (String extension : CUSTOM_ICON_EXTENSIONS)
+            if (name.endsWith(extension)) return true;
+        return false;
+    }
+
+    private void startCustomIconPicker(int index) {
+        if (index < 0 || index >= dockPackages.size()) return;
+        customIconDockIndex = index;
+        customIconPkg = dockPackages.get(index);
+        if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            afterStoragePermission = () -> showImagePicker(index);
+            requestPermissions(new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_STORAGE);
+            return;
+        }
+        showImagePicker(index);
+    }
+
+    /** Fallback when Download cannot be read: Android's own file picker, which needs no permission. */
+    private void startSystemIconPicker(int index) {
+        if (index < 0 || index >= dockPackages.size()) return;
+        customIconDockIndex = index;
+        customIconPkg = dockPackages.get(index);
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT, null);
+        intent.setType("image/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        try {
+            startActivityForResult(Intent.createChooser(intent, tr("Wybierz obraz …", "Choose image …")),
+                    REQUEST_CUSTOM_APP_ICON);
+        } catch (android.content.ActivityNotFoundException e) {
+            // Many TV builds ship no document picker at all; say so instead of doing nothing.
+            showMessageDialog(tr("Wybierz obraz", "Choose image"),
+                    tr("To urządzenie nie ma systemowego wyboru plików.",
+                            "This device has no system file picker."));
+        }
+    }
+
+    /** In-launcher list of the Download folder: folders first, then the images, both by name. */
+    private void showImagePicker(int index) {
+        File root = downloadsFolder();
+        if (root == null) {
+            Toast.makeText(this, tr("Nie znaleziono folderu Pobrane – otwieram systemowy wybór pliku.",
+                    "No Download folder – opening the system file picker."), Toast.LENGTH_LONG).show();
+            startSystemIconPicker(index);
+            return;
+        }
+        showImagePicker(index, root, root);
+    }
+
+    private void showImagePicker(int index, File folder, File root) {
+        File[] listing = folder.listFiles();
+        List<File> folders = new ArrayList<>();
+        List<File> images = new ArrayList<>();
+        if (listing != null) for (File child : listing) {
+            if (child.getName().startsWith(".")) continue;
+            if (child.isDirectory()) folders.add(child);
+            else if (child.isFile() && isIconImage(child)) images.add(child);
+        }
+        folders.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+        images.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout content = popupContent();
+        popupTitle(content, tr("Wybierz obraz", "Choose image"));
+        // "Downloads / subfolder" so it is obvious where the list currently points.
+        StringBuilder path = new StringBuilder(tr("Pobrane", "Downloads"));
+        List<String> crumbs = new ArrayList<>();
+        for (File up = folder; up != null && !up.equals(root); up = up.getParentFile()) crumbs.add(0, up.getName());
+        for (String crumb : crumbs) path.append(" / ").append(crumb);
+        popupDescription(content, tr("Folder ", "Folder ") + path + tr(
+                ". Obsługiwane: PNG, JPG, JPEG, WEBP, SVG.", ". Supported: PNG, JPG, JPEG, WEBP, SVG."));
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(rows);
+        int rowCount = 0;
+        if (!folder.equals(root)) {
+            TextView up = pickerRow("◀  " + tr("Folder wyżej", "Up one folder"), dialog,
+                    () -> showImagePicker(index, folder.getParentFile(), root));
+            rows.addView(up, pickerRowParams());
+            rowCount++;
+        }
+        for (File child : folders) {
+            TextView row = pickerRow(child.getName() + "   ▶", dialog,
+                    () -> showImagePicker(index, child, root));
+            rows.addView(row, pickerRowParams());
+            rowCount++;
+        }
+        for (File child : images) {
+            TextView row = pickerRow(child.getName(), dialog, () -> applyCustomIconFile(index, child));
+            rows.addView(row, pickerRowParams());
+            rowCount++;
+        }
+        if (rowCount == 0) {
+            TextView empty = new TextView(this);
+            empty.setText(tr("Brak obrazów w tym folderze.", "No images in this folder."));
+            empty.setTextColor(muted);
+            empty.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(19));
+            LinearLayout.LayoutParams emptyParams = new LinearLayout.LayoutParams(-1, px(60));
+            rows.addView(empty, emptyParams);
+            rowCount++;
+        }
+        LinearLayout.LayoutParams scrollParams
+                = new LinearLayout.LayoutParams(-1, px(Math.min(420, rowCount * 66 + 12)));
+        scrollParams.topMargin = px(18);
+        content.addView(scroll, scrollParams);
+        TextView other = setupButton(tr("Inna lokalizacja (wybór systemowy)…", "Other location (system picker)…"));
+        other.setOnClickListener(v -> { dialog.dismiss(); startSystemIconPicker(index); });
+        LinearLayout.LayoutParams otherParams = new LinearLayout.LayoutParams(-1, px(60));
+        otherParams.topMargin = px(18);
+        content.addView(other, otherParams);
+        TextView close = setupButton(tr("Zamknij", "Close"));
+        close.setGravity(Gravity.CENTER);
+        close.setOnClickListener(v -> dialog.dismiss());
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(px(150), px(54));
+        closeParams.gravity = Gravity.END;
+        closeParams.topMargin = px(14);
+        content.addView(close, closeParams);
+        watchFit(content);
+        dialog.setContentView(content);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        showDialogWithBlur(dialog);
+        dialog.getWindow().setLayout(px(860), -2);
+        if (rows.getChildCount() > 0) rows.getChildAt(0).requestFocus();
+    }
+
+    private TextView pickerRow(String label, Dialog dialog, Runnable onClick) {
+        TextView row = setupButton(label);
+        fitOneLine(row);
+        row.setOnClickListener(v -> { dialog.dismiss(); onClick.run(); });
+        return row;
+    }
+
+    private LinearLayout.LayoutParams pickerRowParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, px(58));
+        params.bottomMargin = px(8);
+        return params;
+    }
+
+    /** Decodes in the background (a photo can be big), then shows the dock tile with the new icon. */
+    private void applyCustomIconFile(int index, File file) {
+        if (index < 0 || index >= dockPackages.size()) return;
+        String pkg = dockPackages.get(index);
+        Toast.makeText(this, tr("Wczytywanie obrazu…", "Loading image…"), Toast.LENGTH_SHORT).show();
+        new Thread(() -> finishCustomIconImport(index, pkg, decodeIcon(file)), "custom-icon").start();
+    }
+
+    /** Same as {@link #applyCustomIconFile}, for an image handed over by Android's file picker. */
+    private void importCustomIcon(int index, String pkg, Uri uri, String mimeType) {
+        Toast.makeText(this, tr("Wczytywanie obrazu…", "Loading image…"), Toast.LENGTH_SHORT).show();
+        boolean vector = mimeType != null && mimeType.contains("svg");
+        new Thread(() -> {
+            File temp = null;
+            Bitmap bitmap = null;
+            try {
+                temp = File.createTempFile("custom-icon", vector ? ".svg" : ".img", getCacheDir());
+                try (InputStream in = getContentResolver().openInputStream(uri);
+                     OutputStream out = new FileOutputStream(temp)) {
+                    if (in == null) throw new IOException("empty selection");
+                    byte[] buffer = new byte[8192];
+                    long total = 0;
+                    int read;
+                    while ((read = in.read(buffer)) > 0) {
+                        total += read;
+                        if (total > CUSTOM_ICON_MAX_BYTES) break;
+                        out.write(buffer, 0, read);
+                    }
+                }
+                bitmap = decodeIcon(temp);
+            } catch (Exception ignored) { }
+            finally { if (temp != null) temp.delete(); }
+            finishCustomIconImport(index, pkg, bitmap);
+        }, "custom-icon").start();
+    }
+
+    private void finishCustomIconImport(int index, String pkg, Bitmap bitmap) {
+        boolean saved = saveCustomIconBitmap(pkg, bitmap);
+        handler.post(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            if (!saved) {
+                showMessageDialog(tr("Własna ikona aplikacji", "Custom app icon"),
+                        tr("Nie udało się wczytać tego pliku. Spróbuj innego obrazu "
+                                        + "(PNG, JPG, JPEG, WEBP, SVG).",
+                                "This file could not be read. Try another image "
+                                        + "(PNG, JPG, JPEG, WEBP, SVG)."));
+                return;
+            }
+            customIconCache.remove(pkg);
+            Toast.makeText(this, tr("Własna ikona zapisana", "Custom icon saved"),
+                    Toast.LENGTH_SHORT).show();
+            if (customIconDialog != null && customIconDialog.isShowing() && customIconPreview != null) {
+                // The icon window is still open underneath: refresh it instead of stacking another.
+                refreshCustomIconPreview(customIconPreview, pkg);
+                if (customIconPreviewRefresh != null) customIconPreviewRefresh.run();
+                rebuildAfterPopup = true;
+            } else {
+                // The window was closed while the image decoded: just bring the dock up to date.
+                applyVisualSettingsNow();
+            }
+        });
+    }
+
+    private void showDockIconSettings(int index) {
+        if (index < 0 || index >= dockPackages.size()) return;
+        String pkg = dockPackages.get(index);
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout content = popupContent();
+        popupTitle(content, tr("Własna ikona aplikacji", "Custom app icon"));
+        popupDescription(content, tr("Wybierz obraz z folderu Pobrane (PNG, JPG, JPEG, WEBP, SVG) "
+                        + "i kolor tła z palety RYB. Zapisuje się na tym urządzeniu.",
+                "Pick an image from the Download folder (PNG, JPG, JPEG, WEBP, SVG) and a tile "
+                        + "background colour from the RYB palette. Saved on this device."));
+        // The colour sits on a box behind the icon, so zooming the icon does not enlarge the tile.
+        FrameLayout previewBox = new FrameLayout(this);
+        previewBox.setClipToOutline(true);
+        ImageView preview = new ImageView(this);
+        preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        preview.setPadding(px(12), px(12), px(12), px(12));
+        previewBox.addView(preview, new FrameLayout.LayoutParams(-1, -1));
+        refreshCustomIconPreview(preview, pkg);
+        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(px(180), px(180));
+        previewParams.topMargin = px(18);
+        previewParams.gravity = Gravity.CENTER_HORIZONTAL;
+        content.addView(previewBox, previewParams);
+        TextView choose = setupButton(tr("Wybierz obraz z Pobranych …", "Choose an image from Download …"));
+        choose.setOnClickListener(v -> startCustomIconPicker(index));
+        LinearLayout.LayoutParams chooseParams = new LinearLayout.LayoutParams(-1, px(66));
+        chooseParams.topMargin = px(18);
+        content.addView(choose, chooseParams);
+        TextView colourLabel = new TextView(this);
+        colourLabel.setText(tr("Kolor tła (paleta RYB)", "Background colour (RYB palette)"));
+        colourLabel.setTextColor(muted);
+        colourLabel.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(19));
+        LinearLayout.LayoutParams colourLabelParams = new LinearLayout.LayoutParams(-1, -2);
+        colourLabelParams.setMargins(0, px(26), 0, px(10));
+        content.addView(colourLabel, colourLabelParams);
+        // One row: the RYB wheel, so neighbouring hues are literally next to each other.
+        LinearLayout colors = new LinearLayout(this);
+        colors.setOrientation(LinearLayout.HORIZONTAL);
+        colors.setGravity(Gravity.CENTER);
+        final int[] selectedColor = {customIconColor(pkg)};
+        final List<View> swatches = new ArrayList<>();
+        Runnable repaint = () -> {
+            previewBox.setBackground(shape(selectedColor[0] == -1 ? TILE_BG : selectedColor[0],
+                    Color.TRANSPARENT, 30));
+            for (int i = 0; i < swatches.size(); i++) {
+                View swatch = swatches.get(i);
+                boolean selected = selectedColor[0] == CUSTOM_ICON_BACKGROUNDS[i];
+                boolean focused = swatch.isFocused();
+                swatch.setBackground(shape(CUSTOM_ICON_BACKGROUNDS[i],
+                        focused || selected ? Color.WHITE : Color.TRANSPARENT, 22,
+                        focused ? 4 : selected ? 4 : 0));
+            }
+        };
+        for (int i = 0; i < CUSTOM_ICON_BACKGROUNDS.length; i++) {
+            final int color = CUSTOM_ICON_BACKGROUNDS[i];
+            View swatch = new View(this);
+            swatch.setFocusable(true);
+            swatch.setFocusableInTouchMode(true);
+            swatch.setClickable(true);
+            swatch.setOnFocusChangeListener((v, focused) -> {
+                v.setScaleX(focused ? 1.14f : 1f);
+                v.setScaleY(focused ? 1.14f : 1f);
+                boolean selected = selectedColor[0] == color;
+                v.setBackground(shape(color, focused || selected ? Color.WHITE : Color.TRANSPARENT,
+                        22, focused ? 4 : selected ? 4 : 0));
+            });
+            swatch.setOnClickListener(v -> {
+                selectedColor[0] = color;
+                saveCustomIconColor(pkg, color);
+                repaint.run();
+            });
+            LinearLayout.LayoutParams swatchParams = new LinearLayout.LayoutParams(px(44), px(44));
+            swatchParams.setMargins(px(6), px(6), px(6), px(6));
+            colors.addView(swatch, swatchParams);
+            swatches.add(swatch);
+        }
+        repaint.run();
+        LinearLayout.LayoutParams colorsParams = new LinearLayout.LayoutParams(-1, px(60));
+        content.addView(colors, colorsParams);
+        TextView scaleLabel = new TextView(this);
+        scaleLabel.setText(tr("Skala", "Scale"));
+        scaleLabel.setTextColor(muted);
+        scaleLabel.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(19));
+        LinearLayout.LayoutParams scaleLabelParams = new LinearLayout.LayoutParams(-1, -2);
+        scaleLabelParams.setMargins(0, px(26), 0, px(10));
+        content.addView(scaleLabel, scaleLabelParams);
+        LinearLayout scaleRow = new LinearLayout(this);
+        scaleRow.setOrientation(LinearLayout.HORIZONTAL);
+        scaleRow.setGravity(Gravity.CENTER);
+        TextView bigger = setupButton(tr("Powiększ", "Enlarge"));
+        bigger.setOnClickListener(v -> {
+            adjustCustomIconScale(pkg, 0.25f);
+            refreshCustomIconPreview(preview, pkg);
+        });
+        LinearLayout.LayoutParams biggerParams = new LinearLayout.LayoutParams(px(160), px(54));
+        scaleRow.addView(bigger, biggerParams);
+        TextView smaller = setupButton(tr("Zmniejsz", "Shrink"));
+        smaller.setOnClickListener(v -> {
+            adjustCustomIconScale(pkg, -0.25f);
+            refreshCustomIconPreview(preview, pkg);
+        });
+        LinearLayout.LayoutParams smallerParams = new LinearLayout.LayoutParams(px(160), px(54));
+        smallerParams.leftMargin = px(10);
+        scaleRow.addView(smaller, smallerParams);
+        LinearLayout.LayoutParams scaleRowParams = new LinearLayout.LayoutParams(-1, px(70));
+        content.addView(scaleRow, scaleRowParams);
+        TextView remove = setupButton(tr("Usuń własną ikonę", "Remove custom icon"));
+        remove.setOnClickListener(v -> {
+            clearCustomIcon(pkg);
+            dialog.dismiss();
+        });
+        LinearLayout.LayoutParams removeParams = new LinearLayout.LayoutParams(-1, px(66));
+        removeParams.topMargin = px(24);
+        content.addView(remove, removeParams);
+        TextView close = setupButton(tr("Zamknij", "Close"));
+        close.setGravity(Gravity.CENTER_VERTICAL);
+        close.setOnClickListener(v -> dialog.dismiss());
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(px(150), px(54));
+        closeParams.gravity = Gravity.END;
+        content.addView(close, closeParams);
+        customIconDialog = dialog;
+        customIconPreview = preview;
+        customIconPreviewRefresh = repaint;
+        watchFit(content);
+        dialog.setContentView(content);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        showDialogWithBlur(dialog, () -> {
+            if (customIconDialog == dialog) {
+                customIconDialog = null;
+                customIconPreview = null;
+                customIconPreviewRefresh = null;
+            }
+            refreshDock(index);
+        });
+        dialog.getWindow().setLayout(px(780), -2);
+        choose.requestFocus();
     }
 
     private void startDockMove(int index) {
@@ -3755,7 +4325,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             FrameLayout wrapper = new FrameLayout(this);
             wrapper.setClipChildren(false);
             View glow = new View(this);
-            glow.setBackground(new AppGlowDrawable());
+            // Same aura the sport and weather cards use: outside the tile, not under it.
+            glow.setBackground(new AppGlowDrawable(32, true));
             glow.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
             glow.setAlpha(0f);
             FrameLayout.LayoutParams glowParams = new FrameLayout.LayoutParams(px(388), px(164));
@@ -3763,26 +4334,37 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             glowParams.topMargin = -px(11);
             wrapper.addView(glow, glowParams);
             FrameLayout tile = new FrameLayout(this);
-            tile.setBackground(shape(night ? 0xFF263451 : 0xFFE3EAF2,
-                    Color.TRANSPARENT, 32));
+            int tileFill = night ? 0xFF263451 : 0xFFE3EAF2;
+            if (pkg != null) {
+                int customColor = customIconColor(pkg);
+                if (customColor != -1) tileFill = customColor;
+            }
+            final int rowFill = tileFill;
+            tile.setBackground(shape(rowFill, Color.TRANSPARENT, 32));
             tile.setClipToOutline(true);
             tile.setContentDescription(brand);
             tile.setFocusable(true);
             tile.setFocusableInTouchMode(true);
             tile.setClickable(true);
-            tile.setOnFocusChangeListener((v, focused) -> {
-                setAppTileFocus(tile, glow, focused);
-                if (focused) { drawerFocusRow = 0; drawerFocusColumn = column; }
-            });
-            Drawable artwork = null;
-            try {
-                artwork = getPackageManager().getApplicationBanner(pkg);
-                if (artwork == null) artwork = getPackageManager().getApplicationIcon(pkg);
-            } catch (PackageManager.NameNotFoundException ignored) { }
+            Drawable artwork = customArtwork(pkg);
+            boolean customArtwork = artwork != null;
+            if (artwork == null) {
+                try {
+                    artwork = getPackageManager().getApplicationBanner(pkg);
+                    if (artwork == null) artwork = getPackageManager().getApplicationIcon(pkg);
+                } catch (PackageManager.NameNotFoundException ignored) { }
+            }
             if (artwork != null) {
                 ImageView image = new ImageView(this);
                 image.setImageDrawable(artwork);
-                image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                // A picked image stays whole; banners fill the row tile as before.
+                image.setScaleType(customArtwork ? ImageView.ScaleType.FIT_CENTER
+                        : ImageView.ScaleType.CENTER_CROP);
+                if (customArtwork) {
+                    float scale = customIconScale(pkg);
+                    image.setScaleX(scale);
+                    image.setScaleY(scale);
+                }
                 image.setAlpha(0.93f);
                 tile.addView(image, new FrameLayout.LayoutParams(-1, -1));
             } else {
@@ -3794,6 +4376,13 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                 label.setGravity(Gravity.CENTER);
                 tile.addView(label, new FrameLayout.LayoutParams(-1, -1));
             }
+            final View frame = tileFrame(tileFrameColor(rowFill, artwork));
+            tile.addView(frame, new FrameLayout.LayoutParams(-1, -1));
+            tile.setOnFocusChangeListener((v, focused) -> {
+                setAppTileFocus(tile, glow, focused);
+                frame.setVisibility(focused ? View.VISIBLE : View.INVISIBLE);
+                if (focused) { drawerFocusRow = 0; drawerFocusColumn = column; }
+            });
             tile.setOnClickListener(v -> launch(pkg));
             FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(px(340), px(120));
             cardParams.leftMargin = px(20);
@@ -3807,7 +4396,9 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     }
 
     private void populateExtraApps(LinearLayout rows) {
-        Intent query = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
+        // CATEGORY_LAUNCHER covers Android TV (leanback) apps and regular launcher apps, so the
+        // drawer lists user-installed apps even when they were built for phones or tablets.
+        Intent query = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
         List<ResolveInfo> apps = new ArrayList<>(getPackageManager().queryIntentActivities(query, 0));
         HashSet<String> excluded = new HashSet<>();
         excluded.add(getPackageName());
@@ -3816,7 +4407,10 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         List<ResolveInfo> extras = new ArrayList<>();
         for (ResolveInfo info : apps) {
             String pkg = info.activityInfo.packageName;
-            if (excluded.add(pkg)) extras.add(info);
+            if (!excluded.add(pkg)) continue;
+            android.content.pm.ApplicationInfo app = info.activityInfo.applicationInfo;
+            if ((app.flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0) continue;
+            extras.add(info);
         }
         String[] priorities = {"tvp vod", "youtube kids", "cda", "google play"};
         List<ResolveInfo> ordered = new ArrayList<>();
@@ -3849,7 +4443,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             FrameLayout wrapper = new FrameLayout(this);
             wrapper.setClipChildren(false);
             View glow = new View(this);
-            glow.setBackground(new AppGlowDrawable());
+            // Same aura the sport and weather cards use: outside the tile, not under it.
+            glow.setBackground(new AppGlowDrawable(32, true));
             glow.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
             glow.setAlpha(0f);
             FrameLayout.LayoutParams glowParams = new FrameLayout.LayoutParams(px(388), px(164));
@@ -3862,22 +4457,26 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             tile.setClickable(true);
             tile.setClipToOutline(true);
             tile.setContentDescription(info.loadLabel(getPackageManager()));
-            tile.setBackground(shape(night ? 0xFF263451 : 0xFFE3EAF2,
-                    Color.TRANSPARENT, 32));
-            tile.setOnFocusChangeListener((v, focused) -> {
-                setAppTileFocus(tile, glow, focused);
-                if (focused) { drawerFocusRow = drawerRow; drawerFocusColumn = drawerColumn; }
-            });
+            final int rowFill = night ? 0xFF263451 : 0xFFE3EAF2;
+            tile.setBackground(shape(rowFill, Color.TRANSPARENT, 32));
             ImageView icon = new ImageView(this);
             Drawable banner = null;
             try { banner = getPackageManager().getApplicationBanner(pkg); }
             catch (PackageManager.NameNotFoundException ignored) { }
-            icon.setImageDrawable(banner != null ? banner : info.loadIcon(getPackageManager()));
+            Drawable artwork = banner != null ? banner : info.loadIcon(getPackageManager());
+            icon.setImageDrawable(artwork);
             icon.setScaleType(banner != null ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
             FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(-1, -1);
             if (banner == null) icon.setPadding(px(20), px(10), px(20), px(10));
             icon.setAlpha(0.93f);
             tile.addView(icon, iconParams);
+            final View frame = tileFrame(tileFrameColor(rowFill, artwork));
+            tile.addView(frame, new FrameLayout.LayoutParams(-1, -1));
+            tile.setOnFocusChangeListener((v, focused) -> {
+                setAppTileFocus(tile, glow, focused);
+                frame.setVisibility(focused ? View.VISIBLE : View.INVISIBLE);
+                if (focused) { drawerFocusRow = drawerRow; drawerFocusColumn = drawerColumn; }
+            });
             tile.setOnClickListener(v -> {
                 closeAppDrawer();
                 Intent start = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
@@ -3911,6 +4510,18 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
 
     private void openAppDrawer(int focusRow, int focusColumn) {
         if (appDrawerOpen) return;
+        // Remember where the remote comes from before anything below disturbs focus: hiding the
+        // dock for the backdrop capture clears it, and the framework may then hand it to another
+        // tile. Without this the list would always come back to the last tile.
+        drawerReturnColumn = -1;
+        View source = lastDockFocus;
+        for (int i = 0; i < dockCards.size(); i++) {
+            if (dockCards.get(i).hasFocus()) {
+                source = dockCards.get(i);
+                drawerReturnColumn = i;
+            }
+        }
+        lastDockFocus = source;
         if (!drawerRowsLoaded) {
             String[] dockLabels = new String[dockPackages.size()];
             for (int i = 0; i < dockLabels.length; i++) dockLabels[i] = appLabel(dockPackages.get(i));
@@ -3972,8 +4583,26 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     }
 
     private void closeAppDrawer() {
+        closeAppDrawer(-1);
+    }
+
+    /**
+     * Closes the list and gives the remote back to the dock. A column of 0 and up selects that
+     * dock tile; -1 restores the tile the list was opened from (Back, Up out of the first row).
+     */
+    private void closeAppDrawer(int dockIndex) {
         if (!appDrawerOpen) return;
         appDrawerOpen = false;
+        // Pick the tile to return to before the dock becomes focusable again: enabling the
+        // background can move focus around and would make the choice depend on timing.
+        View restore;
+        if (dockIndex >= 0 && !dockCards.isEmpty())
+            restore = dockCards.get(Math.min(dockIndex, dockCards.size() - 1));
+        else if (drawerReturnColumn >= 0 && drawerReturnColumn < dockCards.size())
+            restore = dockCards.get(drawerReturnColumn);
+        else restore = lastDockFocus != null ? lastDockFocus
+                : (dockCards.isEmpty() ? null : dockCards.get(0));
+        drawerReturnColumn = -1;
         for (View view : suspendedFocusables) view.setFocusable(true);
         suspendedFocusables.clear();
         drawerBackdrop.animate().alpha(0).setDuration(220).withEndAction(() -> {
@@ -3993,7 +4622,6 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             if (!appDrawerOpen) appDrawer.setVisibility(View.GONE);
         }).start();
         dockExpand.setVisibility(View.VISIBLE);
-        View restore = lastDockFocus != null ? lastDockFocus : (dockCards.isEmpty() ? null : dockCards.get(0));
         if (restore != null) handler.postDelayed(restore::requestFocus, 40);
     }
 
@@ -4061,9 +4689,13 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                     }
                     if (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN) {
                         int nextRow = row + (key == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1);
-                        if (nextRow < 0 || nextRow < extraAppRows.size() && extraAppRows.get(nextRow).isEmpty()) {
+                        if (nextRow < 0) {
+                            // Up out of the list returns to the dock tile it was opened from.
                             closeAppDrawer();
-                        } else if (nextRow < extraAppRows.size()) {
+                        } else if (nextRow >= extraAppRows.size() || extraAppRows.get(nextRow).isEmpty()) {
+                            // Down out of the list lands on the dock tile in the same column.
+                            closeAppDrawer(column);
+                        } else {
                             List<View> next = extraAppRows.get(nextRow);
                             next.get(Math.min(column, next.size() - 1)).requestFocus();
                             appDrawer.smoothScrollTo(0,
@@ -4074,9 +4706,11 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                 }
             }
             if (!appDrawerOpen && key == KeyEvent.KEYCODE_DPAD_DOWN) {
-                boolean dockFocused = dockExpand != null && dockExpand.hasFocus();
-                for (View card : dockCards) dockFocused |= card.hasFocus();
-                if (dockFocused) { openAppDrawer(); return true; }
+                // The first drawer row repeats the dock, so entering from tile N highlights N.
+                for (int i = 0; i < dockCards.size(); i++) {
+                    if (dockCards.get(i).hasFocus()) { openAppDrawer(0, i); return true; }
+                }
+                if (dockExpand != null && dockExpand.hasFocus()) { openAppDrawer(); return true; }
             }
         }
         return super.dispatchKeyEvent(event);
@@ -4100,11 +4734,66 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         return super.dispatchTouchEvent(event);
     }
 
+    /**
+     * Colour of the selected tile's thin frame, taken from the app itself: a light app gets a
+     * black frame, a dark app a white one (the tile colour only matters when nothing is drawn).
+     */
+    private int tileFrameColor(int fill, Drawable artwork) {
+        float art = artworkLightness(artwork, lightness(fill));
+        return art >= 0.55f ? 0xFF000000 : 0xFFEAF2FA;
+    }
+
+    /** Thin outline shown above a selected tile's artwork; hidden until the tile is focused. */
+    private View tileFrame(int color) {
+        View frame = new View(this);
+        frame.setBackground(shape(Color.TRANSPARENT, color, 32, 2));
+        frame.setFocusable(false);
+        frame.setClickable(false);
+        frame.setVisibility(View.INVISIBLE);
+        return frame;
+    }
+
+    private static float lightness(int color) {
+        return (0.299f * Color.red(color) + 0.587f * Color.green(color)
+                + 0.114f * Color.blue(color)) / 255f;
+    }
+
+    /** Average brightness of a drawable's visible pixels, or {@code fallback} when it has none. */
+    private float artworkLightness(Drawable artwork, float fallback) {
+        if (artwork == null) return fallback;
+        Bitmap sample = null;
+        try {
+            sample = Bitmap.createBitmap(24, 24, Bitmap.Config.ARGB_8888);
+            artwork.setBounds(0, 0, 24, 24);
+            artwork.draw(new Canvas(sample));
+            float sum = 0f;
+            int count = 0;
+            for (int y = 0; y < 24; y++) for (int x = 0; x < 24; x++) {
+                int pixel = sample.getPixel(x, y);
+                if (Color.alpha(pixel) < 40) continue;
+                sum += lightness(pixel);
+                count++;
+            }
+            return count == 0 ? fallback : sum / count;
+        } catch (Exception | OutOfMemoryError ignored) {
+            return fallback;
+        } finally {
+            if (sample != null) sample.recycle();
+        }
+    }
+
+    /** How much the selected tile grows; the aura around it grows by the same amount. */
+    private static final float TILE_FOCUS_SCALE = 1.1f;
+
     private void setAppTileFocus(FrameLayout tile, View glow, boolean focused) {
+        // Exactly the widget highlight: the aura alone, no drop shadow, just sized to the tile.
         glow.animate().alpha(focused ? 1f : 0f).setDuration(170).start();
-        tile.setElevation(focused ? px(14) : 0);
-        tile.setScaleX(focused ? 1.015f : 1f);
-        tile.setScaleY(focused ? 1.015f : 1f);
+        float scale = focused ? TILE_FOCUS_SCALE : 1f;
+        glow.setScaleX(scale);
+        glow.setScaleY(scale);
+        // Big enough to be obvious from the sofa, small enough not to touch the next tile.
+        tile.setScaleX(scale);
+        tile.setScaleY(scale);
     }
 
     private final class AppGlowDrawable extends Drawable {

@@ -9,6 +9,9 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Voice search in the club/city search: asked only when the microphone button is pressed. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- The built-in image picker lists the Download folder (targetSdk 28 storage model);
+         asked only when a custom dock icon is being chosen. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <!-- Not required: projectors and boxes with plain Android (e.g. Wanbo T2 Max) have no leanback. -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />

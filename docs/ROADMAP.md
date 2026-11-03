@@ -16,6 +16,7 @@ Aktualny zakres Open: wyłącznie kalendarzeligowe.pl — Ekstraklasa, I liga, I
 - [x] IV liga — 16 grup wojewódzkich (1.0.1).
 - [x] Kluby zagraniczne Top 5 z fixtur.es (za zgodą, z podpisem źródła) — liga, krajowe i europejskie puchary (niewydane).
 - [x] Dock: wybór aplikacji, zamiana, przesuwanie pilotem i usuwanie (przytrzymanie OK na kafelku).
+- [x] Własne ikony aplikacji w docku: wybór obrazu z folderu Pobrane (PNG, JPG, JPEG, WEBP, SVG) w launcherze, paleta RYB 12 kolorów tła, zapis na urządzeniu.
 - [x] Podpisane APK i instalacja przez Downloader (wydanie 1.0.0, kod `1241090`).
 - [ ] Test na kilku urządzeniach Android TV / Google TV.
 
@@ -62,6 +63,7 @@ Current Open scope: kalendarzeligowe.pl only — Ekstraklasa, I liga, II liga, t
 - [x] Top 5 foreign clubs from fixtur.es (with permission and credit) — league, domestic and European cups (unreleased).
 
 - [x] Dock: choose apps, replace, move with the remote and remove (hold OK on a tile).
+- [x] Custom icons for dock apps: pick an image from the Download folder (PNG, JPG, JPEG, WEBP, SVG) inside the launcher, a 12-colour RYB tile palette, saved on the device.
 - [x] Signed APK and Downloader installation (release 1.0.0, code `1241090`).
 - [ ] Test on several Android TV / Google TV devices.
 
