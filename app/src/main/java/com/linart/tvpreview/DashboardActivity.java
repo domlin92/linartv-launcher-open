@@ -138,6 +138,8 @@ public final class DashboardActivity extends Activity {
     private final List<List<View>> extraAppRows = new ArrayList<>();
     private int drawerFocusRow;
     private int drawerFocusColumn;
+    /** Dock tile the list was opened from; survives the focus hand-over that happens on open. */
+    private int drawerReturnColumn = -1;
     private final List<View> suspendedFocusables = new ArrayList<>();
     private FrameLayout drawerBackdrop;
     private ImageView drawerBlurImage;
@@ -336,6 +338,8 @@ public final class DashboardActivity extends Activity {
         dashboardVisible = true;
         handler.removeCallbacks(updateTime);
         updateTime.run();
+        handler.removeCallbacks(ramMeterTick);
+        handler.post(ramMeterTick);
         scheduleNextMatchBoundary();
         resetScreensaverTimer();
     }
@@ -345,6 +349,7 @@ public final class DashboardActivity extends Activity {
         dashboardVisible = false;
         handler.removeCallbacks(updateTime);
         handler.removeCallbacks(updateMatchCards);
+        handler.removeCallbacks(ramMeterTick);
         handler.removeCallbacks(startScreensaver);
         hideScreensaver();
         super.onPause();
@@ -648,6 +653,7 @@ public final class DashboardActivity extends Activity {
         dockGlows.clear();
         appDrawerOpen = false;
         lastDockFocus = null;
+        drawerReturnColumn = -1;
         night = isNight();
         ink = night ? Color.WHITE : 0xFF15223E;
         muted = night ? 0xFFC6D1E4 : 0xFF34435B;
@@ -670,12 +676,8 @@ public final class DashboardActivity extends Activity {
         clock = text("", 144, Color.WHITE, false, 60, 26, 590, 161);
         date = text("", 37, Color.WHITE, false, 62, 189, 610, 55);
 
+        buildToolbar();
         renderSpotifyBar();
-        circleAction(R.drawable.ic_toolbar_television, tr("Oglądaj telewizję", "Watch TV"), 1338,
-                () -> launch("org.droidtv.playtv"));
-        circleAction(R.drawable.ic_toolbar_sources, tr("Źródła", "Inputs"), 1438, this::showSources);
-        circleAction(R.drawable.ic_toolbar_settings, tr("Ustawienia", "Settings"), 1538,
-                this::showPublicSettings);
         renderUpdateBar();
 
         boolean singleColumn = !clubTwoCalendar.configured();
@@ -715,7 +717,7 @@ public final class DashboardActivity extends Activity {
         action.setFocusable(true);
         action.setClickable(true);
         action.setContentDescription(tr("Wybierz klub do kalendarza meczów", "Choose a club for the match calendar"));
-        action.setOnFocusChangeListener((v, focused) -> showTileGlow(glow, focused));
+        action.setOnFocusChangeListener((v, focused) -> liftTile(glow, v, focused));
         action.setOnClickListener(v -> showTeamSetup());
         place(action, x, y, w, h);
     }
@@ -750,8 +752,6 @@ public final class DashboardActivity extends Activity {
                 R.drawable.ic_toolbar_cleanup, this::closeBackgroundApps);
         settingsFocusable(cleanup).setContentDescription(
                 tr("Zamknij aplikacje działające w tle", "Close background apps"));
-        View wallpapers = settingsTile(tr("Tapety", "Wallpapers"), R.drawable.ic_toolbar_gallery,
-                this::showWallpaperGallery);
         View screensaver = settingsTile(tr("Wygaszacz", "Screensaver"),
                 R.drawable.ic_settings_screensaver, this::showScreensaverSettings);
         View appearance = settingsTile(tr("Wygląd launchera", "Launcher appearance"),
@@ -760,15 +760,17 @@ public final class DashboardActivity extends Activity {
                 this::showWeatherSettings);
         View calendars = settingsTile(tr("Kalendarze", "Calendars"),
                 R.drawable.ic_settings_calendar, this::showCalendarSettings);
+        View buttons = settingsTile(tr("Widoczność przycisków", "Buttons visibility"),
+                R.drawable.ic_settings_visibility, this::showButtonsVisibility);
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         grid.setClipChildren(false);
         grid.setClipToPadding(false);
         content.addView(grid, new LinearLayout.LayoutParams(-1, 0, 1));
-        addSettingsRow(grid, cleanup, wallpapers);
+        addSettingsRow(grid, cleanup, buttons);
         addSettingsRow(grid, screensaver, appearance);
         addSettingsRow(grid, weather, calendars);
-        linkSettingsGrid(cleanup, wallpapers, screensaver, appearance, weather, calendars);
+        linkSettingsGrid(cleanup, buttons, screensaver, appearance, weather, calendars);
 
 
         // System values belong only to this overview, never to the submenus.
@@ -1039,11 +1041,118 @@ public final class DashboardActivity extends Activity {
                 : prefs.contains("day_start_minute") || prefs.contains("night_start_minute") ? 3 : 0;
         showChoiceDialog(tr("Wygląd launchera", "Launcher appearance"), new String[]{
                 tr("Automatycznie", "Automatic"), tr("Zawsze jasny", "Always light"),
-                tr("Zawsze ciemny", "Always dark"), tr("Własne godziny", "Custom schedule")}, current, which -> {
+                tr("Zawsze ciemny", "Always dark"), tr("Własne godziny", "Custom schedule"),
+                tr("Tapety", "Wallpapers")}, current, which -> {
             if (which == 3) { showAppearanceSchedule(); return; }
+            if (which == 4) { showWallpaperGallery(); return; }
             getPreferences(MODE_PRIVATE).edit().putString("appearance_mode", new String[]{"auto", "light", "dark"}[which]).apply();
             applyVisualSettingsNow();
         });
+    }
+
+    /**
+     * Which top-right items stay on the dashboard. The rest of the group keeps hugging the right
+     * edge, so hiding one button never leaves a hole.
+     */
+    private void showButtonsVisibility() {
+        final SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout content = popupContent();
+        popupTitle(content, tr("Widoczność przycisków", "Buttons visibility"));
+        popupDescription(content, tr("Zaznacz elementy widoczne w prawym górnym rogu. "
+                        + "Ukryte znikają, a pozostałe przesuwają się do prawej.",
+                "Tick the items shown in the top-right corner. Hidden ones disappear "
+                        + "and the rest move to the right."));
+        String[] keys = {"toolbar_ram", "toolbar_watch_tv", "toolbar_inputs"};
+        int[] icons = {R.drawable.ic_settings_visibility, R.drawable.ic_toolbar_television,
+                R.drawable.ic_toolbar_sources};
+        String[] labels = {tr("Pamięć RAM", "RAM"), tr("Oglądaj telewizję", "Watch TV"),
+                tr("Źródła", "Inputs")};
+        View first = null;
+        final boolean[] changed = {false};
+        for (int i = 0; i < keys.length; i++) {
+            View row = visibilityRow(labels[i], icons[i], keys[i], prefs, changed);
+            View focusable = ((ViewGroup) row).getChildAt(1);
+            if (first == null) first = focusable;
+            addSettingsControl(content, row, 64);
+        }
+        TextView close = setupButton(tr("Zamknij", "Close"));
+        close.setGravity(Gravity.CENTER);
+        close.setOnClickListener(v -> dialog.dismiss());
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(px(150), px(54));
+        closeParams.gravity = Gravity.END;
+        // Clear of the last row and of its focus aura.
+        closeParams.topMargin = px(26);
+        content.addView(close, closeParams);
+        watchFit(content);
+        dialog.setContentView(content);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        // The dashboard sits behind the blurred backdrop, so one rebuild when the panel closes.
+        showDialogWithBlur(dialog, () -> { if (changed[0]) applyVisualSettingsNow(); });
+        dialog.getWindow().setLayout(px(820), -2);
+        if (first != null) first.requestFocus();
+    }
+
+    /** One switchable line of the "Buttons visibility" panel: icon, name and a tick. */
+    private View visibilityRow(String label, int icon, String key, SharedPreferences prefs,
+                               boolean[] changed) {
+        FrameLayout wrap = new FrameLayout(this);
+        wrap.setClipChildren(false);
+        View glow = new View(this);
+        glow.setBackground(new AppGlowDrawable(13, false));
+        glow.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        glow.setAlpha(0f);
+        FrameLayout.LayoutParams glowParams = new FrameLayout.LayoutParams(-1, -1);
+        glowParams.setMargins(-px(16), -px(16), -px(16), -px(16));
+        wrap.addView(glow, glowParams);
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(px(20), 0, px(20), 0);
+        row.setFocusable(true);
+        row.setFocusableInTouchMode(true);
+        row.setClickable(true);
+        ImageView glyph = new ImageView(this);
+        glyph.setImageResource(icon);
+        row.addView(glyph, new LinearLayout.LayoutParams(px(32), px(32)));
+        TextView name = new TextView(this);
+        name.setText(label);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(21));
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1);
+        nameParams.leftMargin = px(18);
+        row.addView(name, nameParams);
+        TextView tick = new TextView(this);
+        tick.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(22));
+        tick.setGravity(Gravity.CENTER);
+        row.addView(tick, new LinearLayout.LayoutParams(px(36), -2));
+        final boolean[] focusedNow = {false};
+        final Runnable paint = () -> {
+            boolean visible = prefs.getBoolean(key, true);
+            int color = focusedNow[0] ? (night ? 0xFF152849 : Color.WHITE) : ink;
+            name.setTextColor(color);
+            glyph.setColorFilter(color);
+            tick.setText(visible ? "✓" : "–");
+            tick.setTextColor(visible ? color : muted);
+            row.setContentDescription(label + ", "
+                    + (visible ? tr("widoczne", "visible") : tr("ukryte", "hidden")));
+        };
+        row.setOnFocusChangeListener((v, focused) -> {
+            focusedNow[0] = focused;
+            showTileGlow(glow, focused);
+            row.setBackground(shape(focused ? (night ? 0xFFF0F6FF : 0xFF244574)
+                    : (night ? 0xFF344B72 : Color.WHITE), Color.TRANSPARENT, 13));
+            paint.run();
+        });
+        row.setOnClickListener(v -> {
+            prefs.edit().putBoolean(key, !prefs.getBoolean(key, true)).apply();
+            changed[0] = true;
+            paint.run();
+        });
+        row.setBackground(shape(night ? 0xFF344B72 : Color.WHITE, Color.TRANSPARENT, 13));
+        paint.run();
+        wrap.addView(row, new FrameLayout.LayoutParams(-1, -1));
+        return wrap;
     }
 
     private void showAppearanceSchedule() {
@@ -2000,6 +2109,31 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     }
 
     /**
+     * Glow plus lift for a dashboard element drawn straight on the screen (cards, round buttons,
+     * the Spotify bar): every view from the glow up to the focusable one grows around the
+     * element's centre and rises a little, the glow with them, so the aura stays visible.
+     */
+    private void liftTile(View glow, View target, boolean focused) {
+        showTileGlow(glow, focused);
+        if (glow.getParent() != root || target.getParent() != root) return;
+        int from = root.indexOfChild(glow), to = root.indexOfChild(target);
+        if (from < 0 || to < from) return;
+        FrameLayout.LayoutParams g = (FrameLayout.LayoutParams) glow.getLayoutParams();
+        float cx = g.leftMargin + g.width / 2f, cy = g.topMargin + g.height / 2f;
+        // About 24 px of growth whatever the size: round buttons grow more, wide cards less.
+        float scale = focused ? 1f + Math.min(0.08f, px(24) / (float) Math.max(1, g.width - px(48))) : 1f;
+        float rise = focused ? -px(6) : 0;
+        for (int i = from; i <= to; i++) {
+            View view = root.getChildAt(i);
+            if (!(view.getLayoutParams() instanceof FrameLayout.LayoutParams)) continue;
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) view.getLayoutParams();
+            view.setPivotX(cx - lp.leftMargin);
+            view.setPivotY(cy - lp.topMargin);
+            view.animate().scaleX(scale).scaleY(scale).translationY(rise).setDuration(170).start();
+        }
+    }
+
+    /**
      * Narrow strip across the bottom of a card: "Dane dostarcza: <b>provider</b> | odświeżono:
      * 27.10.2026 22:07". Replaces the corner refresh stamp; required credit for fixtur.es.
      */
@@ -2047,8 +2181,9 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         spotifyBar.setFocusable(true);
         spotifyBar.setClickable(true);
         spotifyBar.setOnClickListener(v -> launch("com.spotify.tv.android"));
-        View glow = tileGlow(430, 45, 880, 76, 24);
-        spotifyBar.setOnFocusChangeListener((v, focused) -> showTileGlow(glow, focused));
+        int w = topBarWidth();
+        View glow = tileGlow(430, 45, w, 76, 24);
+        spotifyBar.setOnFocusChangeListener((v, focused) -> liftTile(glow, v, focused));
         spotifyCover = new ImageView(this);
         spotifyCover.setScaleType(ImageView.ScaleType.CENTER_CROP);
         spotifyCover.setBackground(shape(0x221DB954, Color.TRANSPARENT, 12));
@@ -2056,11 +2191,16 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         cover.leftMargin = px(8); cover.topMargin = px(8);
         spotifyBar.addView(spotifyCover, cover);
         spotifyTitle = new NowPlayingTicker(this, px(30), ink);
-        FrameLayout.LayoutParams title = new FrameLayout.LayoutParams(px(770), -1);
+        FrameLayout.LayoutParams title = new FrameLayout.LayoutParams(px(w - 90), -1);
         title.leftMargin = px(84);
         spotifyBar.addView(spotifyTitle, title);
-        place(spotifyBar, 430, 45, 880, 76);
+        place(spotifyBar, 430, 45, w, 76);
         updateSpotifyBar();
+    }
+
+    /** Width of the Spotify/update bar: it stops before the top-right group. */
+    private int topBarWidth() {
+        return Math.max(560, toolbarLeft - 28 - 430);
     }
 
     private void updateSpotifyBar() {
@@ -2110,7 +2250,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         // A small green dot on the settings button stays until the update is installed.
         updateDot = new View(this);
         updateDot.setBackground(shape(0xFF2FBF5B, night ? 0xFF142548 : 0xFFF5F2EA, 9));
-        place(updateDot, 1538 + 56, 47, 18, 18);
+        place(updateDot, settingsX + 56, 47, 18, 18);
         if (AppUpdates.postponed(this, release)) { updateSpotifyBar(); return; }
         updateBar = new FrameLayout(this);
         updateBar.setBackground(shape(panel, outline, 24));
@@ -2134,7 +2274,10 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         label.setSingleLine(true);
         label.setGravity(Gravity.CENTER_VERTICAL);
         label.setAutoSizeTextTypeUniformWithConfiguration(px(18), px(26), 1, TypedValue.COMPLEX_UNIT_PX);
-        FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(px(470), -1);
+        int barW = topBarWidth();
+        // Never reach the Later/Update buttons on the right of the bar.
+        FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(
+                px(Math.min(470, Math.max(240, barW - 421))), -1);
         labelParams.leftMargin = px(84);
         updateBar.addView(label, labelParams);
         TextView later = setupButton(tr("Później", "Later"));
@@ -2152,7 +2295,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             renderUpdateBar();
         });
         update.setOnClickListener(v -> downloadUpdate(release));
-        place(updateBar, 430, 45, 880, 76);
+        place(updateBar, 430, 45, barW, 76);
         updateSpotifyBar();
     }
 
@@ -2230,6 +2373,107 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         });
     }
 
+    /** Right edge of the Settings button; the whole top-right group is packed against it. */
+    private static final int TOOLBAR_RIGHT = 1614;
+    private static final int TOOLBAR_SIZE = 76;
+    /** Button plus the gap to the next one. */
+    private static final int TOOLBAR_PITCH = 100;
+    private static final long RAM_REFRESH_MS = 10_000;
+
+    private TextView ramUsed, ramTotal;
+    private View ramButton;
+    private int settingsX = TOOLBAR_RIGHT - TOOLBAR_SIZE;
+    /** Left edge of the top-right group; the Spotify and update bars stop short of it. */
+    private int toolbarLeft = 1338;
+
+    private final Runnable ramMeterTick = new Runnable() {
+        @Override public void run() {
+            if (ramUsed == null || !dashboardVisible) return;
+            refreshRamMeter();
+            handler.postDelayed(this, RAM_REFRESH_MS);
+        }
+    };
+
+    /**
+     * Top-right corner: the RAM readout and the two shortcuts sit left of Settings and are packed
+     * against it, so hiding one of them leaves no gap (see "Buttons visibility").
+     */
+    private void buildToolbar() {
+        SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        boolean ram = prefs.getBoolean("toolbar_ram", true);
+        boolean watchTv = prefs.getBoolean("toolbar_watch_tv", true);
+        boolean inputs = prefs.getBoolean("toolbar_inputs", true);
+        // Dropped views: the meter tick stops by itself when there is nothing to update.
+        ramUsed = null;
+        ramTotal = null;
+        ramButton = null;
+        int slots = 1 + (ram ? 1 : 0) + (watchTv ? 1 : 0) + (inputs ? 1 : 0);
+        int x = TOOLBAR_RIGHT - TOOLBAR_SIZE - (slots - 1) * TOOLBAR_PITCH;
+        toolbarLeft = x;
+        if (ram) {
+            ramWidget(x);
+            x += TOOLBAR_PITCH;
+        }
+        if (watchTv) {
+            circleAction(R.drawable.ic_toolbar_television, tr("Oglądaj telewizję", "Watch TV"), x,
+                    () -> launch("org.droidtv.playtv"));
+            x += TOOLBAR_PITCH;
+        }
+        if (inputs) {
+            circleAction(R.drawable.ic_toolbar_sources, tr("Źródła", "Inputs"), x, this::showSources);
+            x += TOOLBAR_PITCH;
+        }
+        settingsX = x;
+        circleAction(R.drawable.ic_toolbar_settings, tr("Ustawienia", "Settings"), x,
+                this::showPublicSettings);
+        handler.removeCallbacks(ramMeterTick);
+        if (ram) handler.post(ramMeterTick);
+    }
+
+    /** RAM readout drawn in the same shape as the toolbar buttons: used over "/ total". */
+    private void ramWidget(int x) {
+        FrameLayout button = new FrameLayout(this);
+        place(button, x, 45, TOOLBAR_SIZE, TOOLBAR_SIZE);
+        button.setBackground(shape(panel, outline, 38));
+        LinearLayout lines = new LinearLayout(this);
+        lines.setOrientation(LinearLayout.VERTICAL);
+        lines.setGravity(Gravity.CENTER);
+        ramUsed = new TextView(this);
+        ramUsed.setTextColor(ink);
+        ramUsed.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(15));
+        ramUsed.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        ramUsed.setGravity(Gravity.CENTER);
+        ramUsed.setSingleLine(true);
+        ramTotal = new TextView(this);
+        ramTotal.setTextColor(muted);
+        ramTotal.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(11));
+        ramTotal.setGravity(Gravity.CENTER);
+        ramTotal.setSingleLine(true);
+        lines.addView(ramUsed);
+        lines.addView(ramTotal);
+        FrameLayout.LayoutParams linesParams = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
+        linesParams.setMargins(px(6), 0, px(6), 0);
+        button.addView(lines, linesParams);
+        ramButton = button;
+        refreshRamMeter();
+    }
+
+    private void refreshRamMeter() {
+        if (ramUsed == null) return;
+        ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        if (manager == null) return;
+        ActivityManager.MemoryInfo memory = new ActivityManager.MemoryInfo();
+        manager.getMemoryInfo(memory);
+        String used = android.text.format.Formatter.formatShortFileSize(this,
+                Math.max(0, memory.totalMem - memory.availMem));
+        String total = android.text.format.Formatter.formatShortFileSize(this, memory.totalMem);
+        // "1.4 GB" over "/ 2.0 GB" fits the round button; the unit stays on the total line only.
+        ramUsed.setText(used);
+        ramTotal.setText("/ " + total);
+        if (ramButton != null) ramButton.setContentDescription(
+                tr("Pamięć RAM: ", "RAM: ") + used + " / " + total);
+    }
+
     private void circleAction(int icon, String description, int x, Runnable click) {
         View glow = tileGlow(x, 45, 76, 76, 38);
         FrameLayout button = new FrameLayout(this);
@@ -2244,7 +2488,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         button.setClickable(true);
         button.setBackground(shape(panel, outline, 38));
         button.setOnFocusChangeListener((v, focused) -> {
-            showTileGlow(glow, focused);
+            liftTile(glow, v, focused);
         });
         button.setOnClickListener(v -> click.run());
     }
@@ -2508,7 +2752,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             tile.setFocusable(true);
             tile.setFocusableInTouchMode(true);
             tile.setClickable(true);
-            tile.setOnFocusChangeListener((v, focused) -> showTileGlow(glow, focused));
+            tile.setOnFocusChangeListener((v, focused) -> liftTile(glow, v, focused));
             tile.setContentDescription(feed.selected == 0 ? tr("Następny mecz ", "Next match ") + club
                     : tr("Wróć do najbliższego meczu ", "Return to nearest match ") + club);
             tile.setOnClickListener(v -> {
@@ -2831,7 +3075,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         openDetails.setClickable(true);
         openDetails.setContentDescription(tr("Pogoda ", "Weather ") + cityName
                 + tr(". Otwórz szczegóły", ". Open details"));
-        openDetails.setOnFocusChangeListener((view, focused) -> showTileGlow(glow, focused));
+        openDetails.setOnFocusChangeListener((view, focused) -> liftTile(glow, view, focused));
         openDetails.setOnClickListener(view -> showWeatherDetails());
         place(openDetails, x, y, w, h);
     }
@@ -3334,7 +3578,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
 
     private void dockTile(String brand, String pkg, int x) {
         View glow = new View(this);
-        glow.setBackground(new AppGlowDrawable());
+        // Same aura the sport and weather cards use: outside the tile, not under it.
+        glow.setBackground(new AppGlowDrawable(32, true));
         glow.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         glow.setAlpha(0f);
         place(glow, x - 24, 743, 388, 164);
@@ -3346,7 +3591,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         card.setFocusableInTouchMode(true);
         card.setClickable(true);
         card.setContentDescription(brand);
-        card.setBackground(shape(TILE_BG, Color.TRANSPARENT, 32));
+        final int cardFill = TILE_BG;
+        card.setBackground(shape(cardFill, Color.TRANSPARENT, 32));
         card.setClipToOutline(true);
         Drawable artwork = null;
         if (pkg != null) {
@@ -3378,12 +3624,17 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             label.setGravity(Gravity.CENTER);
             card.addView(label, new FrameLayout.LayoutParams(-1, -1));
         }
-        card.setOnFocusChangeListener((view, focused) -> {
-            if (focused) lastDockFocus = card;
-            if (dockMoveIndex < 0) setAppTileFocus(card, glow, focused);
-        });
         card.setOnClickListener(view -> {
             if (pkg == null) showDockEditor(false); else launch(pkg);
+        });
+
+        card.setOnFocusChangeListener((view, focused) -> {
+            // While the list is open its tiles take focus; ignore the background hand-over that
+            // happens when the dock is suspended, so the remembered tile cannot drift.
+            if (focused && !appDrawerOpen) lastDockFocus = card;
+            if (dockMoveIndex < 0) {
+                setAppTileFocus(card, glow, focused);
+            }
         });
         if (pkg != null) {
             card.setLongClickable(true);
@@ -3456,7 +3707,9 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     private void refreshDock(int focusIndex) {
         applyVisualSettingsNow();
         handler.postDelayed(() -> {
-            if (!dockCards.isEmpty()) dockCards.get(Math.max(0, Math.min(focusIndex, dockCards.size() - 1))).requestFocus();
+            // A window opened meanwhile owns the focus; never steal it back.
+            if (popupOpen || dockCards.isEmpty()) return;
+            dockCards.get(Math.max(0, Math.min(focusIndex, dockCards.size() - 1))).requestFocus();
         }, 120);
     }
 
@@ -3755,7 +4008,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             FrameLayout wrapper = new FrameLayout(this);
             wrapper.setClipChildren(false);
             View glow = new View(this);
-            glow.setBackground(new AppGlowDrawable());
+            // Same aura the sport and weather cards use: outside the tile, not under it.
+            glow.setBackground(new AppGlowDrawable(32, true));
             glow.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
             glow.setAlpha(0f);
             FrameLayout.LayoutParams glowParams = new FrameLayout.LayoutParams(px(388), px(164));
@@ -3763,17 +4017,13 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             glowParams.topMargin = -px(11);
             wrapper.addView(glow, glowParams);
             FrameLayout tile = new FrameLayout(this);
-            tile.setBackground(shape(night ? 0xFF263451 : 0xFFE3EAF2,
-                    Color.TRANSPARENT, 32));
+            final int rowFill = night ? 0xFF263451 : 0xFFE3EAF2;
+            tile.setBackground(shape(rowFill, Color.TRANSPARENT, 32));
             tile.setClipToOutline(true);
             tile.setContentDescription(brand);
             tile.setFocusable(true);
             tile.setFocusableInTouchMode(true);
             tile.setClickable(true);
-            tile.setOnFocusChangeListener((v, focused) -> {
-                setAppTileFocus(tile, glow, focused);
-                if (focused) { drawerFocusRow = 0; drawerFocusColumn = column; }
-            });
             Drawable artwork = null;
             try {
                 artwork = getPackageManager().getApplicationBanner(pkg);
@@ -3794,6 +4044,10 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                 label.setGravity(Gravity.CENTER);
                 tile.addView(label, new FrameLayout.LayoutParams(-1, -1));
             }
+            tile.setOnFocusChangeListener((v, focused) -> {
+                setAppTileFocus(tile, glow, focused);
+                if (focused) { drawerFocusRow = 0; drawerFocusColumn = column; }
+            });
             tile.setOnClickListener(v -> launch(pkg));
             FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(px(340), px(120));
             cardParams.leftMargin = px(20);
@@ -3849,7 +4103,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             FrameLayout wrapper = new FrameLayout(this);
             wrapper.setClipChildren(false);
             View glow = new View(this);
-            glow.setBackground(new AppGlowDrawable());
+            // Same aura the sport and weather cards use: outside the tile, not under it.
+            glow.setBackground(new AppGlowDrawable(32, true));
             glow.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
             glow.setAlpha(0f);
             FrameLayout.LayoutParams glowParams = new FrameLayout.LayoutParams(px(388), px(164));
@@ -3862,22 +4117,23 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             tile.setClickable(true);
             tile.setClipToOutline(true);
             tile.setContentDescription(info.loadLabel(getPackageManager()));
-            tile.setBackground(shape(night ? 0xFF263451 : 0xFFE3EAF2,
-                    Color.TRANSPARENT, 32));
-            tile.setOnFocusChangeListener((v, focused) -> {
-                setAppTileFocus(tile, glow, focused);
-                if (focused) { drawerFocusRow = drawerRow; drawerFocusColumn = drawerColumn; }
-            });
+            final int rowFill = night ? 0xFF263451 : 0xFFE3EAF2;
+            tile.setBackground(shape(rowFill, Color.TRANSPARENT, 32));
             ImageView icon = new ImageView(this);
             Drawable banner = null;
             try { banner = getPackageManager().getApplicationBanner(pkg); }
             catch (PackageManager.NameNotFoundException ignored) { }
-            icon.setImageDrawable(banner != null ? banner : info.loadIcon(getPackageManager()));
+            Drawable artwork = banner != null ? banner : info.loadIcon(getPackageManager());
+            icon.setImageDrawable(artwork);
             icon.setScaleType(banner != null ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
             FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(-1, -1);
             if (banner == null) icon.setPadding(px(20), px(10), px(20), px(10));
             icon.setAlpha(0.93f);
             tile.addView(icon, iconParams);
+            tile.setOnFocusChangeListener((v, focused) -> {
+                setAppTileFocus(tile, glow, focused);
+                if (focused) { drawerFocusRow = drawerRow; drawerFocusColumn = drawerColumn; }
+            });
             tile.setOnClickListener(v -> {
                 closeAppDrawer();
                 Intent start = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
@@ -3911,6 +4167,18 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
 
     private void openAppDrawer(int focusRow, int focusColumn) {
         if (appDrawerOpen) return;
+        // Remember where the remote comes from before anything below disturbs focus: hiding the
+        // dock for the backdrop capture clears it, and the framework may then hand it to another
+        // tile. Without this the list would always come back to the last tile.
+        drawerReturnColumn = -1;
+        View source = lastDockFocus;
+        for (int i = 0; i < dockCards.size(); i++) {
+            if (dockCards.get(i).hasFocus()) {
+                source = dockCards.get(i);
+                drawerReturnColumn = i;
+            }
+        }
+        lastDockFocus = source;
         if (!drawerRowsLoaded) {
             String[] dockLabels = new String[dockPackages.size()];
             for (int i = 0; i < dockLabels.length; i++) dockLabels[i] = appLabel(dockPackages.get(i));
@@ -3972,8 +4240,26 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     }
 
     private void closeAppDrawer() {
+        closeAppDrawer(-1);
+    }
+
+    /**
+     * Closes the list and gives the remote back to the dock. A column of 0 and up selects that
+     * dock tile; -1 restores the tile the list was opened from (Back, Up out of the first row).
+     */
+    private void closeAppDrawer(int dockIndex) {
         if (!appDrawerOpen) return;
         appDrawerOpen = false;
+        // Pick the tile to return to before the dock becomes focusable again: enabling the
+        // background can move focus around and would make the choice depend on timing.
+        View restore;
+        if (dockIndex >= 0 && !dockCards.isEmpty())
+            restore = dockCards.get(Math.min(dockIndex, dockCards.size() - 1));
+        else if (drawerReturnColumn >= 0 && drawerReturnColumn < dockCards.size())
+            restore = dockCards.get(drawerReturnColumn);
+        else restore = lastDockFocus != null ? lastDockFocus
+                : (dockCards.isEmpty() ? null : dockCards.get(0));
+        drawerReturnColumn = -1;
         for (View view : suspendedFocusables) view.setFocusable(true);
         suspendedFocusables.clear();
         drawerBackdrop.animate().alpha(0).setDuration(220).withEndAction(() -> {
@@ -3993,7 +4279,6 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             if (!appDrawerOpen) appDrawer.setVisibility(View.GONE);
         }).start();
         dockExpand.setVisibility(View.VISIBLE);
-        View restore = lastDockFocus != null ? lastDockFocus : (dockCards.isEmpty() ? null : dockCards.get(0));
         if (restore != null) handler.postDelayed(restore::requestFocus, 40);
     }
 
@@ -4061,9 +4346,13 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                     }
                     if (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN) {
                         int nextRow = row + (key == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1);
-                        if (nextRow < 0 || nextRow < extraAppRows.size() && extraAppRows.get(nextRow).isEmpty()) {
+                        if (nextRow < 0) {
+                            // Up out of the list returns to the dock tile it was opened from.
                             closeAppDrawer();
-                        } else if (nextRow < extraAppRows.size()) {
+                        } else if (nextRow >= extraAppRows.size() || extraAppRows.get(nextRow).isEmpty()) {
+                            // Down out of the list lands on the dock tile in the same column.
+                            closeAppDrawer(column);
+                        } else {
                             List<View> next = extraAppRows.get(nextRow);
                             next.get(Math.min(column, next.size() - 1)).requestFocus();
                             appDrawer.smoothScrollTo(0,
@@ -4074,9 +4363,11 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
                 }
             }
             if (!appDrawerOpen && key == KeyEvent.KEYCODE_DPAD_DOWN) {
-                boolean dockFocused = dockExpand != null && dockExpand.hasFocus();
-                for (View card : dockCards) dockFocused |= card.hasFocus();
-                if (dockFocused) { openAppDrawer(); return true; }
+                // The first drawer row repeats the dock, so entering from tile N highlights N.
+                for (int i = 0; i < dockCards.size(); i++) {
+                    if (dockCards.get(i).hasFocus()) { openAppDrawer(0, i); return true; }
+                }
+                if (dockExpand != null && dockExpand.hasFocus()) { openAppDrawer(); return true; }
             }
         }
         return super.dispatchKeyEvent(event);
@@ -4100,11 +4391,27 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         return super.dispatchTouchEvent(event);
     }
 
+    /** How much a selected app tile grows; it also rises on a soft shadow. */
+    private static final float TILE_FOCUS_SCALE = 1.08f;
+
     private void setAppTileFocus(FrameLayout tile, View glow, boolean focused) {
         glow.animate().alpha(focused ? 1f : 0f).setDuration(170).start();
-        tile.setElevation(focused ? px(14) : 0);
-        tile.setScaleX(focused ? 1.015f : 1f);
-        tile.setScaleY(focused ? 1.015f : 1f);
+        float lift = focused ? TILE_FOCUS_SCALE : 1f;
+        // The aura grows and rises with the tile so it stays visible around it; parents must
+        // not clip it at the row's edge.
+        for (android.view.ViewParent v = glow.getParent(); v instanceof ViewGroup; v = v.getParent()) {
+            ((ViewGroup) v).setClipChildren(false);
+            ((ViewGroup) v).setClipToPadding(false);
+        }
+        glow.animate().scaleX(focused ? lift * 1.04f : 1f).scaleY(focused ? lift * 1.04f : 1f)
+                .translationY(focused ? -px(6) : 0).setDuration(170).start();
+        // Lifted on a dark, soft shadow: visible on light wallpapers without any outline.
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            tile.setOutlineAmbientShadowColor(0xFF000000);
+            tile.setOutlineSpotShadowColor(0xFF000000);
+        }
+        tile.animate().scaleX(lift).scaleY(lift).translationZ(focused ? px(22) : 0)
+                .translationY(focused ? -px(6) : 0).setDuration(170).start();
     }
 
     private final class AppGlowDrawable extends Drawable {

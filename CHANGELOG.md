@@ -3,6 +3,38 @@
 Każde wydanie ma tu wpis po polsku i po angielsku. Najnowsze na górze.
 Every release gets an entry here in Polish and English. Newest first.
 
+## Niewydane / Unreleased
+
+**Polski**
+
+Nowe
+- **Widoczność przycisków** (Ustawienia): ukrywanie Oglądaj telewizję, Źródeł i nowego widżetu pamięci RAM w prawym górnym rogu; pozostałe przyciski przesuwają się do prawej.
+- **Widżet RAM:** zajęta i cała pamięć telewizora.
+
+Ulepszone
+- Wyraźniejsze zaznaczenie: wybrany kafelek aplikacji, karta, przycisk lub pasek lekko się powiększa i unosi, z poświatą wokół; kafelki aplikacji mają też cień, więc dobrze je widać na jasnej tapecie (#2).
+- Galeria tapet jest teraz w „Wyglądzie launchera”.
+
+Poprawione
+- Po zamknięciu listy aplikacji (Wstecz lub strzałka w górę) zaznaczenie wraca na kafelek docka, z którego ją otwarto, a nie na ostatni (#3). Strzałka w dół z kafelka podświetla tę samą aplikację na liście.
+
+Podziękowania: seythegamer za pull request #4, z którego pochodzą te zmiany.
+
+**English**
+
+New
+- **Buttons visibility** (Settings): hide Watch TV, Inputs and the new RAM widget in the top-right corner; the remaining buttons move to the right.
+- **RAM widget:** used and total memory of the TV.
+
+Improved
+- Clearer selection: the selected app tile, card, button or bar grows slightly and rises with an aura around it; app tiles also get a shadow, so they stand out on light wallpapers (#2).
+- The wallpaper gallery now lives in "Launcher appearance".
+
+Fixed
+- Closing the app list (Back or Up) returns to the dock tile it was opened from instead of the last one (#3). Pressing Down on a tile highlights the same app in the list.
+
+Thanks: seythegamer for pull request #4, where these changes come from.
+
 ## 1.0.2 — 2026-10-30
 
 **Polski**
