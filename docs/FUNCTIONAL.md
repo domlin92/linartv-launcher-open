@@ -20,7 +20,7 @@ LinarTV to ekran główny (launcher) dla Android TV z myślą o kibicach polskie
 #### Dock i aplikacje
 - Dock z ulubionymi aplikacjami pokazuje ich oryginalne banery. Przy mniej niż 4 aplikacjach kafelki są wyśrodkowane.
 - **Przytrzymanie OK na kafelku** otwiera menu: Zamień aplikację, Przesuń (strzałki ◀ ▶ przestawiają kafelek, OK zapisuje, Wstecz anuluje), Edytuj cały dock, Usuń z docka.
-- **Szuflada aplikacji**: strzałka w dół pod dockiem otwiera listę wszystkich aplikacji. Pierwszy rząd listy to aplikacje z docka: wejście strzałką w dół z kafelka 3 podświetla kafelek 3 na liście, wyjście w dół z kolumny 2 wraca na kafelek 2 w docku, a Wstecz (lub strzałka w górę z pierwszego rzędu) wraca na kafelek, z którego listę otwarto. Wybrany element (kafelek aplikacji, karta pogody i meczu, okrągły przycisk, pasek Spotify) lekko się powiększa i unosi, a wokół niego świeci poświata; kafelki aplikacji mają też miękki cień, więc są dobrze widoczne także na jasnej tapecie.
+- **Szuflada aplikacji**: strzałka w dół pod dockiem otwiera listę wszystkich aplikacji. Pierwszy rząd listy to aplikacje z docka: wejście strzałką w dół z kafelka 3 podświetla kafelek 3 na liście, wyjście w dół z kolumny 2 wraca na kafelek 2 w docku, a Wstecz (lub strzałka w górę z pierwszego rzędu) wraca na kafelek, z którego listę otwarto. Wybrany element (kafelek aplikacji, karta pogody i meczu, okrągły przycisk, pasek Spotify) lekko się powiększa i unosi, a wokół niego świeci poświata.
 - **Odtwarzana muzyka:** gdy gra Spotify, pasek pokazuje tytuł utworu.
 
 #### Ustawienia (zębatka)
@@ -173,7 +173,7 @@ LinarTV is a home screen (launcher) for Android TV built for Polish football fan
 **Dock and apps**
 - The dock shows favourite apps with their original banners; with fewer than 4 apps the tiles are centred.
 - **Hold OK on a tile** for: Replace app, Move (◀ ▶ move the tile, OK saves, Back cancels), Edit the whole dock, Remove from dock.
-- **App drawer:** the down arrow below the dock opens all apps. The first row repeats the dock apps: pressing Down from dock tile 3 highlights tile 3 in the list, pressing Down out of column 2 returns to dock tile 2, and Back (or Up out of the first row) returns to the tile the list was opened from. The selected item (app tile, weather and match card, round button, Spotify bar) grows slightly and rises with an aura around it; app tiles also get a soft shadow, so they stand out on light wallpapers too.
+- **App drawer:** the down arrow below the dock opens all apps. The first row repeats the dock apps: pressing Down from dock tile 3 highlights tile 3 in the list, pressing Down out of column 2 returns to dock tile 2, and Back (or Up out of the first row) returns to the tile the list was opened from. The selected item (app tile, weather and match card, round button, Spotify bar) grows slightly and rises with an aura around it.
 - **Now playing:** while Spotify plays, the strip shows the track.
 
 **Settings (gear)**

@@ -4391,7 +4391,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         return super.dispatchTouchEvent(event);
     }
 
-    /** How much a selected app tile grows; it also rises on a soft shadow. */
+    /** How much a selected app tile grows; it also rises a little. */
     private static final float TILE_FOCUS_SCALE = 1.08f;
 
     private void setAppTileFocus(FrameLayout tile, View glow, boolean focused) {
@@ -4403,14 +4403,10 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             ((ViewGroup) v).setClipChildren(false);
             ((ViewGroup) v).setClipToPadding(false);
         }
-        glow.animate().scaleX(focused ? lift * 1.04f : 1f).scaleY(focused ? lift * 1.04f : 1f)
+        glow.animate().scaleX(lift).scaleY(lift)
                 .translationY(focused ? -px(6) : 0).setDuration(170).start();
-        // Lifted on a dark, soft shadow: visible on light wallpapers without any outline.
-        if (android.os.Build.VERSION.SDK_INT >= 28) {
-            tile.setOutlineAmbientShadowColor(0xFF000000);
-            tile.setOutlineSpotShadowColor(0xFF000000);
-        }
-        tile.animate().scaleX(lift).scaleY(lift).translationZ(focused ? px(22) : 0)
+        // No elevation shadow: on Android 8 TVs it shows as a grey frame around the tile.
+        tile.animate().scaleX(lift).scaleY(lift)
                 .translationY(focused ? -px(6) : 0).setDuration(170).start();
     }
 

@@ -12,7 +12,7 @@ Nowe
 - **Widżet RAM:** zajęta i cała pamięć telewizora.
 
 Ulepszone
-- Wyraźniejsze zaznaczenie: wybrany kafelek aplikacji, karta, przycisk lub pasek lekko się powiększa i unosi, z poświatą wokół; kafelki aplikacji mają też cień, więc dobrze je widać na jasnej tapecie (#2).
+- Wyraźniejsze zaznaczenie: wybrany kafelek aplikacji, karta, przycisk lub pasek lekko się powiększa i unosi, z poświatą wokół (#2).
 - Galeria tapet jest teraz w „Wyglądzie launchera”.
 
 Poprawione
@@ -27,7 +27,7 @@ New
 - **RAM widget:** used and total memory of the TV.
 
 Improved
-- Clearer selection: the selected app tile, card, button or bar grows slightly and rises with an aura around it; app tiles also get a shadow, so they stand out on light wallpapers (#2).
+- Clearer selection: the selected app tile, card, button or bar grows slightly and rises with an aura around it (#2).
 - The wallpaper gallery now lives in "Launcher appearance".
 
 Fixed
