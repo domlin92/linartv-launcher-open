@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Weather wallpaper template / szablon tapety: snow, day.
+    Placeholder gradient - edit the colours below, or replace this whole file with your own
+    artwork saved under the same name (weather_snow_day.png / .webp / .jpg).
+    7 kinds x day/night: docs/WEATHER-WALLPAPERS.md
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#6C8CA9"
+        android:centerColor="#A7C0D3" android:endColor="#E7F0F6" />
+</shape>

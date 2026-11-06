@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Weather wallpaper template / szablon tapety: clear sky, day.
+    Placeholder gradient - edit the colours below, or replace this whole file with your own
+    artwork saved under the same name (weather_clear_day.png / .webp / .jpg). No code changes.
+    7 kinds x day/night: docs/WEATHER-WALLPAPERS.md
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#1D5FAE"
+        android:centerColor="#4E97DC" android:endColor="#A8D2F2" />
+</shape>

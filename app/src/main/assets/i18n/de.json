@@ -253,5 +253,19 @@
   "Custom icon saved": "Benutzerdefinierte App gespeichert",
   "Scale": "Skala",
   "Enlarge": "Vergrößern",
-  "Shrink": "Verkleinern"
+  "Shrink": "Verkleinern",
+  "Wallpaper follows the weather": "Tapete folgt dem Wetter",
+  "Now: ": "Jetzt: ",
+  "Clear": "Klar",
+  "Partly cloudy": "Teilweise bewölkt",
+  "Cloudy": "Bewölkt",
+  "Rain": "Regen",
+  "Snow": "Schnee",
+  "Thunderstorm": "Gewitter",
+  "Fog": "Nebel",
+  "day": "Tag",
+  "night": "Nacht",
+  "The wallpaper will change once the forecast arrives.": "Die Tapete ändert sich, sobald die Vorhersage eintrifft.",
+  "enabled": "eingeschaltet",
+  "disabled": "ausgeschaltet"
 }

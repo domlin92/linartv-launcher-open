@@ -253,5 +253,19 @@
   "Custom icon saved": "Icono personalizado guardado",
   "Scale": "Escala",
   "Enlarge": "Agrandar",
-  "Shrink": "Reducir"
+  "Shrink": "Reducir",
+  "Wallpaper follows the weather": "El fondo sigue el tiempo",
+  "Now: ": "Ahora: ",
+  "Clear": "Despejado",
+  "Partly cloudy": "Parcialmente nublado",
+  "Cloudy": "Nublado",
+  "Rain": "Lluvia",
+  "Snow": "Nieve",
+  "Thunderstorm": "Tormenta",
+  "Fog": "Niebla",
+  "day": "día",
+  "night": "noche",
+  "The wallpaper will change once the forecast arrives.": "El fondo cambiará cuando llegue el pronóstico.",
+  "enabled": "activado",
+  "disabled": "desactivado"
 }

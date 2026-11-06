@@ -34,5 +34,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Crest matcher checks failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Compilation of language checks failed.' }
 & $runtime -cp $outputPath com.linart.tvpreview.LanguageChoiceCheck
 if ($LASTEXITCODE -ne 0) { throw 'Language checks failed.' }
+& $compiler -encoding UTF-8 -d $outputPath (Join-Path $projectRoot 'app\src\main\java\com\linart\tvpreview\WeatherWallpaper.java') (Join-Path $projectRoot 'tests\WeatherWallpaperCheck.java')
+if ($LASTEXITCODE -ne 0) { throw 'Compilation of weather wallpaper checks failed.' }
+& $runtime -cp $outputPath com.linart.tvpreview.WeatherWallpaperCheck
+if ($LASTEXITCODE -ne 0) { throw 'Weather wallpaper checks failed.' }
 python (Join-Path $projectRoot 'scripts\check-translations.py')
 if ($LASTEXITCODE -ne 0) { throw 'Translation coverage checks failed.' }

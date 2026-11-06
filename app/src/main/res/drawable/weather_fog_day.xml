@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Weather wallpaper template / szablon tapety: fog, day.
+    Placeholder gradient - edit the colours below, or replace this whole file with your own
+    artwork saved under the same name (weather_fog_day.png / .webp / .jpg).
+    7 kinds x day/night: docs/WEATHER-WALLPAPERS.md
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#858D93"
+        android:centerColor="#B4BBC0" android:endColor="#E0E4E7" />
+</shape>

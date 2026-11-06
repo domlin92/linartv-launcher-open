@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Weather wallpaper template / szablon tapety: thunderstorm, day.
+    Placeholder gradient - edit the colours below, or replace this whole file with your own
+    artwork saved under the same name (weather_storm_day.png / .webp / .jpg).
+    7 kinds x day/night: docs/WEATHER-WALLPAPERS.md
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#221C33"
+        android:centerColor="#3E3358" android:endColor="#6A5A82" />
+</shape>

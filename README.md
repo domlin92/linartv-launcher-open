@@ -44,6 +44,7 @@ LinarTV replaces your home screen. It does not uninstall the TV manufacturer's a
 - **Updates inside the app** — when a new release is out, LinarTV shows an "Update available" bar; one click downloads it and opens the install window. Your settings stay.
 - **Day and night modes**, app dock and full app drawer, quick access to TV inputs.
 - **Wallpapers from your phone** — scan a QR code and upload photos over your home Wi-Fi (6-digit code, attempt limit).
+- **Weather wallpaper** — optional background that follows the current conditions: 7 weather kinds, each with a day and a night version that follow your launcher appearance setting (14 templates you can replace in the source, [docs/WEATHER-WALLPAPERS.md](docs/WEATHER-WALLPAPERS.md)).
 - **Screensaver** with your photos after 5 minutes of inactivity.
 
 ### Install with Downloader (no computer needed)
@@ -110,6 +111,7 @@ LinarTV zastępuje ekran główny. Nie odinstalowuje aplikacji producenta telewi
 - **Aktualizacje w aplikacji** — gdy pojawi się nowa wersja, LinarTV pokaże pasek „Dostępna aktualizacja”; jedno kliknięcie pobiera ją i otwiera okno instalacji. Ustawienia zostają.
 - **Tryb dzienny i nocny**, pasek aplikacji i pełna lista aplikacji, szybki dostęp do źródeł TV.
 - **Tapety z telefonu** — zeskanuj kod QR i wyślij zdjęcia przez domowe Wi-Fi (6-cyfrowy kod z limitem prób).
+- **Tapeta z pogodą** — opcjonalne tło zmieniające się z aktualnymi warunkami: 7 rodzajów pogody, każdy w wersji dziennej i nocnej zgodnej z ustawieniem wyglądu launchera (14 szablonów do podmiany w kodzie źródłowym, [docs/WEATHER-WALLPAPERS.md](docs/WEATHER-WALLPAPERS.md)).
 - **Wygaszacz** z Twoimi zdjęciami po 5 minutach bezczynności.
 
 ### Instalacja z asystentem AI (Codex, Claude Code)

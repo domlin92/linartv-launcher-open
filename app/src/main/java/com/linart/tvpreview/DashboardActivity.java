@@ -1123,6 +1123,18 @@ public final class DashboardActivity extends Activity {
     /** One switchable line of the "Buttons visibility" panel: icon, name and a tick. */
     private View visibilityRow(String label, int icon, String key, SharedPreferences prefs,
                                boolean[] changed) {
+        return switchRow(label, icon, () -> prefs.getBoolean(key, true), () -> {
+            prefs.edit().putBoolean(key, !prefs.getBoolean(key, true)).apply();
+            changed[0] = true;
+        }, tr("widoczne", "visible"), tr("ukryte", "hidden"));
+    }
+
+    /**
+     * Focusable switch line with an icon, a name and a ✓ / – tick. The state is read again on every
+     * repaint, so the tick follows the setting without rebuilding the panel.
+     */
+    private View switchRow(String label, int icon, java.util.function.BooleanSupplier state,
+                           Runnable toggle, String onDescription, String offDescription) {
         FrameLayout wrap = new FrameLayout(this);
         wrap.setClipChildren(false);
         View glow = new View(this);
@@ -1154,14 +1166,13 @@ public final class DashboardActivity extends Activity {
         row.addView(tick, new LinearLayout.LayoutParams(px(36), -2));
         final boolean[] focusedNow = {false};
         final Runnable paint = () -> {
-            boolean visible = prefs.getBoolean(key, true);
+            boolean on = state.getAsBoolean();
             int color = focusedNow[0] ? (night ? 0xFF152849 : Color.WHITE) : ink;
             name.setTextColor(color);
             glyph.setColorFilter(color);
-            tick.setText(visible ? "✓" : "–");
-            tick.setTextColor(visible ? color : muted);
-            row.setContentDescription(label + ", "
-                    + (visible ? tr("widoczne", "visible") : tr("ukryte", "hidden")));
+            tick.setText(on ? "✓" : "–");
+            tick.setTextColor(on ? color : muted);
+            row.setContentDescription(label + ", " + (on ? onDescription : offDescription));
         };
         row.setOnFocusChangeListener((v, focused) -> {
             focusedNow[0] = focused;
@@ -1171,8 +1182,7 @@ public final class DashboardActivity extends Activity {
             paint.run();
         });
         row.setOnClickListener(v -> {
-            prefs.edit().putBoolean(key, !prefs.getBoolean(key, true)).apply();
-            changed[0] = true;
+            toggle.run();
             paint.run();
         });
         row.setBackground(shape(night ? 0xFF344B72 : Color.WHITE, Color.TRANSPARENT, 13));
@@ -5099,6 +5109,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
     }
 
     private void showSavedWallpaper(ImageView image) {
+        int weatherResource = weatherWallpaper();
+        if (weatherResource != 0) { image.setImageResource(weatherResource); return; }
         String choice = selectedWallpaper();
         if ("aurora".equals(choice)) image.setImageResource(R.drawable.aurora_wallpaper);
         else if (choice.startsWith("folder:")) {
@@ -5120,6 +5132,69 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
             return "sunset";
         }
         return choice;
+    }
+
+    /** "Tapeta śledzi pogodę": the background follows the weather instead of the gallery choice. */
+    private boolean followsWeather() {
+        return getPreferences(MODE_PRIVATE).getBoolean("wallpaper_follows_weather", false);
+    }
+
+    /**
+     * Drawable for the conditions right now, or 0 when the switch is off or there is no forecast
+     * yet - then the wallpaper picked in the gallery stays visible.
+     */
+    private int weatherWallpaper() {
+        if (forecast == null || !followsWeather()) return 0;
+        String code = forecast.optString("current_icon", "");
+        if (WeatherWallpaper.wmoOf(code) < 0) return 0;
+        // Day or night is the same state the rest of the launcher uses: "Launcher appearance"
+        // (automatic, always light, always dark or custom hours), see isNight().
+        return weatherWallpaperDrawable(WeatherWallpaper.kindOf(code), night);
+    }
+
+    /** The fourteen templates; file names and editing notes in docs/WEATHER-WALLPAPERS.md. */
+    private int weatherWallpaperDrawable(int kind, boolean night) {
+        switch (kind) {
+            case WeatherWallpaper.CLEAR:
+                return night ? R.drawable.weather_clear_night : R.drawable.weather_clear_day;
+            case WeatherWallpaper.PARTLY_CLOUDY:
+                return night ? R.drawable.weather_partly_cloudy_night
+                        : R.drawable.weather_partly_cloudy_day;
+            case WeatherWallpaper.RAIN:
+                return night ? R.drawable.weather_rain_night : R.drawable.weather_rain_day;
+            case WeatherWallpaper.SNOW:
+                return night ? R.drawable.weather_snow_night : R.drawable.weather_snow_day;
+            case WeatherWallpaper.STORM:
+                return night ? R.drawable.weather_storm_night : R.drawable.weather_storm_day;
+            case WeatherWallpaper.FOG:
+                return night ? R.drawable.weather_fog_night : R.drawable.weather_fog_day;
+            default:
+                return night ? R.drawable.weather_cloudy_night : R.drawable.weather_cloudy_day;
+        }
+    }
+
+    /** Localised name of a wallpaper kind, shown in the gallery hint. */
+    private String weatherKindName(int kind) {
+        switch (kind) {
+            case WeatherWallpaper.CLEAR: return tr("Bezchmurnie", "Clear");
+            case WeatherWallpaper.PARTLY_CLOUDY: return tr("Częściowe zachmurzenie", "Partly cloudy");
+            case WeatherWallpaper.RAIN: return tr("Deszcz", "Rain");
+            case WeatherWallpaper.SNOW: return tr("Śnieg", "Snow");
+            case WeatherWallpaper.STORM: return tr("Burza", "Thunderstorm");
+            case WeatherWallpaper.FOG: return tr("Mgła", "Fog");
+            default: return tr("Zachmurzenie", "Cloudy");
+        }
+    }
+
+    /** Second line of the wallpaper gallery: what the launcher shows right now. */
+    private String wallpaperGalleryHint() {
+        if (!followsWeather()) return tr("Wybierz zdjęcie, aby ustawić je jako tło pulpitu.",
+                "Choose a photo to set it as your background.");
+        if (weatherWallpaper() == 0) return tr("Tapeta zmieni się po pobraniu prognozy.",
+                "The wallpaper will change once the forecast arrives.");
+        String code = forecast.optString("current_icon", "");
+        return tr("Teraz: ", "Now: ") + weatherKindName(WeatherWallpaper.kindOf(code))
+                + " · " + (night ? tr("noc", "night") : tr("dzień", "day"));
     }
 
     private void resetScreensaverTimer() {
@@ -5390,7 +5465,10 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         return Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888);
     }
 
-    private void showWallpaperGallery() {
+    private void showWallpaperGallery() { showWallpaperGallery(false); }
+
+    /** @param focusWeatherSwitch true when the gallery reopens right after toggling the weather option. */
+    private void showWallpaperGallery(boolean focusWeatherSwitch) {
         File[] files = wallpaperFolder().listFiles(file -> file.isFile()
                 && file.length() <= 25_000_000
                 && file.getName().matches("(?i).+\\.(jpg|jpeg|png|webp)"));
@@ -5403,9 +5481,21 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         content.setPadding(px(34), px(26), px(34), px(29));
         content.setBackground(shape(night ? 0xFF142548 : 0xFFF5F2EA,
                 night ? 0xFF899BC6 : 0xFFB7C4D5, 26));
+        content.setClipChildren(false);
+        content.setClipToPadding(false);
         detailLine(content, tr("Tapety", "Wallpapers"), 31, true, ink);
-        detailLine(content, tr("Wybierz zdjęcie, aby ustawić je jako tło pulpitu.",
-                "Choose a photo to set it as your background."), 18, false, muted);
+        detailLine(content, wallpaperGalleryHint(), 18, false, muted);
+        View weatherSwitch = switchRow(tr("Tapeta śledzi pogodę", "Wallpaper follows the weather"),
+                R.drawable.ic_toolbar_gallery, this::followsWeather, () -> {
+            getPreferences(MODE_PRIVATE).edit()
+                    .putBoolean("wallpaper_follows_weather", !followsWeather()).apply();
+            dialog.dismiss();
+            applyVisualSettingsNow();
+            handler.post(() -> showWallpaperGallery(true));
+        }, tr("włączona", "enabled"), tr("wyłączona", "disabled"));
+        LinearLayout.LayoutParams weatherSwitchParams = new LinearLayout.LayoutParams(-1, px(64));
+        weatherSwitchParams.topMargin = px(4);
+        content.addView(weatherSwitch, weatherSwitchParams);
         android.widget.HorizontalScrollView gallery = new android.widget.HorizontalScrollView(this);
         gallery.setHorizontalScrollBarEnabled(false);
         gallery.setClipChildren(false);
@@ -5442,7 +5532,7 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         deleteParams.leftMargin = px(24);
         deleteParams.topMargin = px(22);
         deleteWrap.addView(delete, deleteParams);
-        String selected = selectedWallpaper();
+        String selected = followsWeather() ? "" : selectedWallpaper();
         addWallpaperThumbnail(row, dialog, "sunset", R.drawable.sunset_wallpaper, null, selected,
                 deleteWrap, delete, deleteTarget, deleteKey);
         addWallpaperThumbnail(row, dialog, "aurora", R.drawable.aurora_wallpaper, null, selected,
@@ -5545,7 +5635,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         showDialogWithBlur(dialog);
         dialog.getWindow().setLayout(px(1080), -2);
-        add.requestFocusFromTouch();
+        if (focusWeatherSwitch) ((ViewGroup) weatherSwitch).getChildAt(1).requestFocusFromTouch();
+        else add.requestFocusFromTouch();
     }
 
     private void addWallpaperThumbnail(LinearLayout row, Dialog dialog, String key,
@@ -5596,7 +5687,8 @@ second.setOnClickListener(v -> chooseLeague(1, draft, second, dialog, status));
         });
         if (file != null) tile.setNextFocusDownId(delete.getId());
         tile.setOnClickListener(v -> {
-            getPreferences(MODE_PRIVATE).edit().putString("wallpaper", key).apply();
+            getPreferences(MODE_PRIVATE).edit().putString("wallpaper", key)
+                    .putBoolean("wallpaper_follows_weather", false).apply();
             dialog.dismiss();
             applyVisualSettingsNow();
         });
