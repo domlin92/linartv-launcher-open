@@ -21,9 +21,7 @@ public final class WakeService extends Service {
             if (!Intent.ACTION_SCREEN_ON.equals(intent.getAction())) return;
             handler.postDelayed(() -> {
                 if (!BootReceiver.isDefaultHome(WakeService.this)) { stopSelf(); return; }
-                Intent dashboard = new Intent(WakeService.this, DashboardActivity.class);
-                dashboard.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                startActivity(dashboard);
+                startActivity(BootReceiver.homeIntent(WakeService.this));
             }, 3500);
         }
     };

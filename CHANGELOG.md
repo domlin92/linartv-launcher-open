@@ -16,6 +16,7 @@ Ulepszone
 - Galeria tapet jest teraz w „Wyglądzie launchera”.
 
 Poprawione
+- Uruchomienie po starcie i wybudzeniu używa zadania ekranu Home; nie tworzy drugiej instancji pulpitu w osobnym zadaniu.
 - Po zamknięciu listy aplikacji (Wstecz lub strzałka w górę) zaznaczenie wraca na kafelek docka, z którego ją otwarto, a nie na ostatni (#3). Strzałka w dół z kafelka podświetla tę samą aplikację na liście.
 
 Podziękowania: seythegamer za pull request #4, z którego pochodzą te zmiany.
@@ -31,6 +32,7 @@ Improved
 - The wallpaper gallery now lives in "Launcher appearance".
 
 Fixed
+- Starting after boot or wake now uses the Home task instead of creating a second dashboard in a separate task.
 - Closing the app list (Back or Up) returns to the dock tile it was opened from instead of the last one (#3). Pressing Down on a tile highlights the same app in the list.
 
 Thanks: seythegamer for pull request #4, where these changes come from.

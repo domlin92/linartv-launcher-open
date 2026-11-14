@@ -21,9 +21,7 @@ public final class BootReceiver extends BroadcastReceiver {
         if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) { startWakeMonitor(context); return; }
         if (!Intent.ACTION_BOOT_COMPLETED.equals(action)) return;
         startWakeMonitor(context);
-        Intent dashboard = new Intent(context, DashboardActivity.class);
-        dashboard.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent launch = PendingIntent.getActivity(context, 100, dashboard,
+        PendingIntent launch = PendingIntent.getActivity(context, 100, homeIntent(context),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarms != null) alarms.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,
@@ -36,6 +34,14 @@ public final class BootReceiver extends BroadcastReceiver {
         ResolveInfo info = context.getPackageManager().resolveActivity(home, 0);
         return info != null && info.activityInfo != null
                 && context.getPackageName().equals(info.activityInfo.packageName);
+    }
+
+    /** Resolve through HOME so boot and wake reuse the launcher's home task. */
+    static Intent homeIntent(Context context) {
+        return new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+                .setPackage(context.getPackageName())
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        | Intent.FLAG_ACTIVITY_SINGLE_TOP);
     }
 
     /** Starts WakeService, which brings the dashboard back whenever the screen wakes from standby. */
